@@ -11,7 +11,7 @@ all: ./src/main.cc
 	$(CXX) ./src/main.cc $(CFLAGS) $(OFLAGS_optim) -o gptp2019
 
 debug: ./src/main.cc
-	$(CXX) ./src/main.cc $(CFLAGS_debug) $(OFLAGS_debug) -o gptp2019
+	$(CXX) ./src/main.cc $(CFLAGS) $(OFLAGS_debug) -o gptp2019
 
 clean:
 	rm ./gptp2019

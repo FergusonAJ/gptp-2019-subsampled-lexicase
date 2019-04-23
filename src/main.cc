@@ -43,7 +43,6 @@ int main(int argc, char* argv[]){
     E.Setup(config);
     E.Run();
     std::cout << "Finished!" << std::endl;
-    std::cout << "Goodbye! :^)" << std::endl;
         
     return 0;
 }
