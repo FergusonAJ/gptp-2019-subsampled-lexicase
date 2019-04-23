@@ -12,6 +12,7 @@ protected:
 public:
     Organism(){
     }
+
     Organism(const genome_t & genome_) :
         genome(genome_){
     }
