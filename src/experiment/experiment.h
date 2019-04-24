@@ -46,7 +46,7 @@ protected:
     void SetupHardware(); 
 
     // Bookkeeping variables
-    bool setupDone = false;
+    bool setup_done = false;
     
     //Hardware variables
     emp::Ptr<inst_lib_t> inst_lib;
@@ -60,15 +60,16 @@ protected:
     // Configurable parameters read in from .cfg file
     // General
     int SEED;
-    int TREATMENT;
-    int POP_SIZE;
+    size_t TREATMENT;
+    size_t POP_SIZE;
     // Program
-    int MIN_PROG_SIZE;
-    int MAX_PROG_SIZE;
-    int PROG_EVAL_TIME;
+    size_t MIN_PROG_SIZE;
+    size_t MAX_PROG_SIZE;
+    size_t PROG_EVAL_TIME;
     // Hardware
     double MIN_TAG_SPECIFICITY;
-    int MAX_CALL_DEPTH;
+    size_t MAX_CALL_DEPTH;
+
 public: 
     Experiment();
     ~Experiment();
@@ -81,14 +82,14 @@ Experiment::Experiment(){
 }
 
 Experiment::~Experiment(){
-    if(setupDone){
+    if(setup_done){
         world.Delete();
         randPtr.Delete();
     }
 }
 
 void Experiment::Setup(const ExperimentConfig& config){
-    if(setupDone){
+    if(setup_done){
         std::cout << "Error! You can only setup the experiment one time!" << std::endl;
         exit(-1);
     }
@@ -105,7 +106,7 @@ void Experiment::Setup(const ExperimentConfig& config){
     
     InitializePopulation();
     world->SetAutoMutate(true);
-    setupDone = true;
+    setup_done = true;
 }
     
 void Experiment::SetupHardware(){
@@ -128,12 +129,12 @@ void Experiment::SetupHardware(){
 }
 
 void Experiment::Run(){
-    if(!setupDone){
+    if(!setup_done){
         std::cout << "Error! You must call Setup() before calling run on your experiment!" 
             << std::endl;
         exit(-1);
     }
-
+    std::cout << "Experiment finished!" << std::endl;
 }
 
 void Experiment::CopyConfig(const ExperimentConfig& config){
@@ -151,7 +152,7 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
 }
 
 void Experiment::InitializePopulation(){
-    for(int i = 0; i < POP_SIZE; ++i)
+    for(size_t i = 0; i < POP_SIZE; ++i)
         world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
             MAX_PROG_SIZE), 1);      
 }

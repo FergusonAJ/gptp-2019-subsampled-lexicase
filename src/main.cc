@@ -18,8 +18,7 @@
 
 // Local includes
 #include "./experiment/exp_config.h"
-#include "./experiment/experiment.h"
-
+#include "./experiment/experiment_handler.h"
 
 int main(int argc, char* argv[]){
     std::string config_fname = "experiment_config.cfg";
@@ -39,7 +38,7 @@ int main(int argc, char* argv[]){
     config.Write(std::cout);
     std::cout << "==============================\n" << std::endl;
 
-    Experiment E;
+    ExperimentHandler E;
     E.Setup(config);
     E.Run();
     std::cout << "Finished!" << std::endl;
