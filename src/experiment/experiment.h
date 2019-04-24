@@ -45,6 +45,9 @@ protected:
     void InitializePopulation();
     void SetupHardware(); 
 
+    // To be defined per problem
+    virtual void SetupProblem() = 0;
+
     // Bookkeeping variables
     bool setup_done = false;
     
@@ -72,7 +75,7 @@ protected:
 
 public: 
     Experiment();
-    ~Experiment();
+    virtual ~Experiment();
     void Setup(const ExperimentConfig& config);
     void Run();
 };
@@ -82,6 +85,7 @@ Experiment::Experiment(){
 }
 
 Experiment::~Experiment(){
+    std::cout << "Cleaning up experiment..." << std::endl;
     if(setup_done){
         world.Delete();
         randPtr.Delete();

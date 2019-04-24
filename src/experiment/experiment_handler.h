@@ -1,12 +1,17 @@
 // Shallow wrapper around the abstract experiment class to allow us to select different 
 //   programming synthesis problems
 
+
+#ifndef COHORT_EXP_HANDLER_H
+#define COHORT_EXP_HANDLER_H
+
 #include <iostream>
 // Empirical includes
 #include "./base/Ptr.h"
 #include "./base/assert.h"
 // Local includes
 #include "./experiment.h"
+#include "./experiment_smallest.h"
 
 class ExperimentHandler{
 public:
@@ -41,7 +46,7 @@ void ExperimentHandler::Setup(const ExperimentConfig& config) {
     problem_type = (ProblemType)config.PROBLEM_ID();
     switch(problem_type){
         case ProblemType::SMALLEST: {
-            exp_ptr = emp::NewPtr<Experiment>();
+            exp_ptr = emp::NewPtr<Experiment_Smallest>();
             break;
         }
         default: {
@@ -60,3 +65,5 @@ void ExperimentHandler::Run(){
     }
     exp_ptr->Run();
 }
+
+#endif
