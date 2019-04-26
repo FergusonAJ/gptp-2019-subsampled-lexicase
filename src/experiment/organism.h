@@ -21,7 +21,8 @@ protected:
     size_t num_passes;
     size_t num_fails;
     size_t num_submissions;
-    emp::vector<TestStatus> status_vec;
+    emp::vector<TestStatus> status_vec; // Covers every single test case
+    emp::vector<TestStatus> local_status_vec; // Only covers the cases to be encountered
 public:
     Organism(){
     }
@@ -32,6 +33,7 @@ public:
     const genome_t & GetGenome() const { 
         return genome;
     }
+
     void Reset(size_t num_cases){
         num_passes = 0;   
         num_fails = 0;   
@@ -39,6 +41,12 @@ public:
         status_vec.clear();
         status_vec.resize(num_cases, TestStatus::UNTESTED);
     }
+    void Reset(size_t num_cases, size_t num_local_cases){
+        Reset(num_cases);
+        local_status_vec.clear();
+        local_status_vec.resize(num_local_cases, TestStatus::UNTESTED);
+    }
+
     void Record(size_t test_id, bool pass, bool submitted){
         if(test_id >= status_vec.size()){
             std::cout << "Error! Tried to assign score for test case #" << test_id;
@@ -54,6 +62,19 @@ public:
         }
         if(submitted)
             ++num_submissions;
+    }
+    void Record(size_t test_id, bool pass, bool submitted, size_t local_test_id){
+        Record(test_id, pass, submitted);
+        if(local_test_id >= local_status_vec.size()){
+            std::cout << "Error! Tried to assign score for local test case #" << local_test_id;
+            std::cout << " while organism's local vector has length" << local_status_vec.size();
+            std::cout << std::endl;
+        }
+    }
+
+    double GetLocalScore(size_t local_test_id){
+        emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
+        return (double)(local_test_id == TestStatus::PASS);
     }
 };
 

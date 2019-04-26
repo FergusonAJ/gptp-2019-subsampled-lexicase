@@ -18,8 +18,8 @@
 #include "../gp/TagLinearGP.h"
 #include "../gp/TagLinearGP_InstLib.h"
 #include "../gp/TagLinearGP_Utilities.h"
-
-#include "organism.h"
+#include "./Selection.h"
+#include "./organism.h"
 
 constexpr size_t TAG_WIDTH = 16;
 constexpr size_t MEM_SIZE = TAG_WIDTH;
@@ -46,6 +46,7 @@ protected:
     void InitializePopulation();
     void SetupHardware(); 
     void SetupEvaluation(); 
+    void SetupSelection(); 
     void Step();
     void Evaluate();
     void Selection();
@@ -78,6 +79,7 @@ protected:
     //Evolution variables
     emp::Ptr<world_t> world;
     TreatmentType treatment_type;
+    emp::vector<std::function<double(org_t&)>> lexicase_fit_funcs;
 
     // Configurable parameters read in from .cfg file
     // General
@@ -98,7 +100,8 @@ protected:
     std::string TEST_SET_FILENAME;
     //Cohort Lexicase
     size_t PROG_COHORT_SIZE;    
-    size_t TEST_COHORT_SIZE;    
+    size_t TEST_COHORT_SIZE;   
+    size_t COHORT_MAX_FUNCS; 
 
 public: 
     Experiment();
@@ -136,7 +139,9 @@ void Experiment::Setup(const ExperimentConfig& config){
     SetupProblem(); // This is pure virtual, so to change this we have to 
                     //      change/create a derived class
     SetupEvaluation();
-    
+   
+    SetupSelection();    
+ 
     InitializePopulation();
     world->SetAutoMutate(true);
     setup_done = true;
@@ -204,6 +209,35 @@ void Experiment::SetupEvaluation(){
     }
 }
 
+//TODO: Add selection pressure for smaller program size?
+void Experiment::SetupSelection(){
+    switch(treatment_type){
+        case REDUCED_LEXICASE: {
+            break;
+        }
+        case COHORT_LEXICASE: {
+            // Handle one cohort at a time
+            for(size_t cohort_id = 0; cohort_id < num_cohorts; ++cohort_id){
+                for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
+                    lexicase_fit_funcs.push_back(
+                        [local_test_id](org_t& org){
+                            return org.GetLocalScore(local_test_id);
+                        }
+                    );        
+                }
+            }
+            break;
+        }
+        case DOWNSAMPLED_LEXICASE: {
+            break;
+        }
+        default: {
+            std::cout << "Error in selection setup: Invalid treament type!" << std::endl;
+            exit(-1);
+        };
+    }
+}
+
 void Experiment::Run(){
     if(!setup_done){
         std::cout << "Error! You must call Setup() before calling run on your experiment!" 
@@ -243,6 +277,7 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     // Cohort Lexicase
     PROG_COHORT_SIZE = config.PROG_COHORT_SIZE();
     TEST_COHORT_SIZE = config.TEST_COHORT_SIZE();
+    COHORT_MAX_FUNCS = config.COHORT_MAX_FUNCS();
 }
 
 void Experiment::InitializePopulation(){
@@ -251,6 +286,8 @@ void Experiment::InitializePopulation(){
             MAX_PROG_SIZE), 1);      
 }
 
+//TODO: Keep tabs of best solutions thus far
+//TODO: Hook up other treatments
 void Experiment::Evaluate(){
     //Remember to reset hardware and load each program
     switch(treatment_type){
@@ -266,7 +303,7 @@ void Experiment::Evaluate(){
                 for(size_t prog_id_off = 0; prog_id_off < PROG_COHORT_SIZE; ++prog_id_off){
                     size_t prog_id = cohort_id * PROG_COHORT_SIZE + prog_id_off; 
                     org_t & cur_prog = world->GetOrg(program_ids[prog_id]);
-                    cur_prog.Reset(num_training_cases);
+                    cur_prog.Reset(num_training_cases, TEST_COHORT_SIZE);
                     // Test against all test cases in the current cohort
                     for(size_t test_id_off = 0; test_id_off < TEST_COHORT_SIZE; ++test_id_off){
                         size_t test_id = cohort_id * TEST_COHORT_SIZE + test_id_off; 
@@ -289,6 +326,33 @@ void Experiment::Evaluate(){
 }
 
 void Experiment::Selection(){
+    switch(treatment_type){
+        case REDUCED_LEXICASE: {
+            break;
+        }
+        case COHORT_LEXICASE: {
+            for(size_t cohort_id = 0; cohort_id < num_cohorts; ++cohort_id){
+                emp::vector<size_t> cur_cohort(
+                        program_ids.begin() + (cohort_id * PROG_COHORT_SIZE),
+                        program_ids.begin() + ((cohort_id + 1) * PROG_COHORT_SIZE)
+                );
+                emp::CohortLexicaseSelect_NAIVE(*world,
+                                                lexicase_fit_funcs,
+                                                cur_cohort,
+                                                PROG_COHORT_SIZE,
+                                                COHORT_MAX_FUNCS
+                );
+            }
+            break;
+        }
+        case DOWNSAMPLED_LEXICASE: {
+            break;
+        }
+        default: {
+            std::cout << "Error in selection: Invalid treament type!" << std::endl;
+            exit(-1);
+        };
+    }
 }
 
 void Experiment::Update(){

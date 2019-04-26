@@ -38,7 +38,9 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     //Cohort Lexicase Group
     GROUP(COHORT_LEXICASE_GROUP, "Settings specific to experiments using cohort lexicase (See TREATMENT)"),
     VALUE(PROG_COHORT_SIZE, size_t, 100, "The number of programs in a single cohort"),
-    VALUE(TEST_COHORT_SIZE, size_t, 10, "The number of test cases in a single cohort")
+    VALUE(TEST_COHORT_SIZE, size_t, 10, "The number of test cases in a single cohort"),
+    VALUE(COHORT_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking a random " 
+        "remaining organism. (0 for no limit, i.e., use the PROG_COHORT_SIZE).")
 )
 
 #endif
