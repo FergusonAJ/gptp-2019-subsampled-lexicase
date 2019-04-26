@@ -133,7 +133,7 @@ protected:
     emp::vector<std::function<double(org_t&)>> lexicase_fit_funcs;
     size_t max_passes;
     
-    //Stats and the like
+    //Stats and tracking
     size_t smallest_solution_size;
     bool solution_found;
     size_t update_first_solution_found;
@@ -143,6 +143,8 @@ protected:
     size_t validation_passes;
     size_t validation_fails;
     size_t validation_submissions;
+    emp::Ptr<emp::DataFile> solution_file;
+    emp::Ptr<emp::DataFile> phen_diversity_file;
 
     // Configurable parameters read in from .cfg file
     // General
@@ -196,6 +198,7 @@ Experiment::Experiment(){
 Experiment::~Experiment(){
     std::cout << "Cleaning up experiment..." << std::endl;
     if(setup_done){
+        solution_file.Delete();
         world.Delete();
         randPtr.Delete();
     }
@@ -222,6 +225,7 @@ void Experiment::Setup(const ExperimentConfig& config){
     update_first_solution_found = GENERATIONS + 1;
     current_best_prog_id = 0;
 
+
     // Setup the different pieces of the experiment
     SetupHardware();
     
@@ -230,11 +234,17 @@ void Experiment::Setup(const ExperimentConfig& config){
     
     SetupDilution(); // Handled by the derived class
 
+    if(NUM_TESTS == 0){
+        NUM_TESTS = num_training_cases;
+    }
+
     SetupEvaluation();
    
     SetupSelection();    
 
     SetupMutation();
+
+    SetupDataCollection();
 
     //TODO: Add smallest pressure
     world->SetFitFun([this](org_t& org){
@@ -338,9 +348,6 @@ void Experiment::SetupEvaluation(){
 void Experiment::SetupSelection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
-            if(NUM_TESTS == 0){
-                NUM_TESTS = num_training_cases;
-            }
             std::cout << "Setting up REDUCED Lexicase selection" << std::endl;
             for(size_t local_test_id = 0; local_test_id < NUM_TESTS; ++local_test_id){
                 lexicase_fit_funcs.push_back(
@@ -398,10 +405,13 @@ void Experiment::SetupMutation(){
 }
 
 void Experiment::SetupDataCollection(){
+    //Create dir (Does this actually work?)
     mkdir(OUTPUT_DIR.c_str(), ACCESSPERMS);
     if(OUTPUT_DIR.back() != '/')
         OUTPUT_DIR += '/';
-    
+    SetupDataCollectionFunctions();
+        
+    // Define helper functions
     std::function<size_t(void)> get_update = [this]() { return world->GetUpdate(); };
     std::function<double(void)> get_evaluations = [this]() {
         if(treatment_type == REDUCED_LEXICASE)
@@ -413,6 +423,16 @@ void Experiment::SetupDataCollection(){
         else
             return 0.0;
     };
+    // Create solution file
+    solution_file = emp::NewPtr<emp::DataFile>(OUTPUT_DIR + "/solutions.csv");
+    solution_file->AddFun(get_update, "update");
+    solution_file->AddFun(get_evaluations, "evaluations");
+    solution_file->AddFun(program_stats.get_id, "program_id");
+    solution_file->AddFun(program_stats.get_program_len, "program_len");
+    solution_file->AddFun(program_stats.get_program, "program");
+    solution_file->PrintHeaderKeys();
+    // Setup generic fitness tracking
+    world->SetupFitnessFile(OUTPUT_DIR + "/fitness.csv").SetTimingRepeat(SUMMARY_STATS_INTERVAL);
 }
 
 void Experiment::SetupDataCollectionFunctions(){
@@ -447,8 +467,9 @@ void Experiment::SetupDataCollectionFunctions(){
         org_t & org = world->GetOrg(stats_focus_org_id);
         std::string scores = "\"[";
         for (size_t test_id = 0; test_id < max_passes; ++test_id) {
-            if (test_id) scores += ",";
-                scores += emp::to_string(org.GetRawScore(test_id));
+            if (test_id) 
+                scores += ",";
+            scores += emp::to_string(org.GetRawScore(test_id));
         }
         scores += "]\"";
         return scores;
@@ -466,8 +487,9 @@ void Experiment::SetupDataCollectionFunctions(){
     program_stats.get_validation_eval__passes_by_test = [this]() {
         std::string scores = "\"[";
         for (size_t test_id = 0; test_id < num_test_cases; ++test_id) {
-            if (test_id) scores += ",";
-                scores += emp::to_string((size_t)validation_results[test_id].passed);
+            if (test_id) 
+                scores += ",";
+            scores += emp::to_string((size_t)validation_results[test_id].passed);
         }
         scores += "]\"";
         return scores; 
@@ -500,7 +522,6 @@ void Experiment::Run(){
 void Experiment::Step(){
     Evaluate();
     Select();
-    UpdateRecords();
     Update();
 }
 
@@ -682,20 +703,19 @@ void Experiment::UpdateRecords(){
             }
         } 
     }
-    if(cur_update % SNAPSHOT_INTERVAL || update_first_solution_found == cur_update || 
+    if(cur_update % SNAPSHOT_INTERVAL == 0 || update_first_solution_found == cur_update || 
             cur_update >= GENERATIONS -1){
         SavePopSnapshot();
     } 
 }
 
-//TODO: THIS
 void Experiment::SavePopSnapshot(){
-    /*
-    std::string snapshot_dir = OUTPUT_DIR + "pop_" + emp::to_string((int)prog_world->GetUpdate());
+    std::string snapshot_dir = OUTPUT_DIR + "pop_" + emp::to_string((int)world->GetUpdate());
     mkdir(snapshot_dir.c_str(), ACCESSPERMS);
+    std::cout << "Saving snapshot at " << snapshot_dir << std::endl;
 
     emp::DataFile file(snapshot_dir + "/program_pop_" 
-            + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
+            + emp::to_string((int)world->GetUpdate()) + ".csv");
 
     // Add functions to data file.
     file.AddFun(program_stats.get_id, "program_id", "Program ID");
@@ -717,17 +737,14 @@ void Experiment::SavePopSnapshot(){
     file.PrintHeaderKeys();
 
     // For each program in the population, dump the program and anything we want to know about it.
-    for (stats_util.cur_progID = 0; stats_util.cur_progID < prog_world->GetSize(); 
-            ++stats_util.cur_progID) {
-        if (!prog_world->IsOccupied(stats_util.cur_progID)) continue;
+    for (stats_focus_org_id = 0; stats_focus_org_id < world->GetSize(); ++stats_focus_org_id) {
+        if (!world->IsOccupied(stats_focus_org_id)) continue;
             //Do Validation check 
-            DoTestingSetValidation(prog_world->GetOrg(stats_util.cur_progID));
+            RunAllValidations(world->GetOrg(stats_focus_org_id));
         // Update snapshot file
         file.Update();
     }
-    */
-   //TODO: Hook up phylogeny
-    
+   //TODO: Hook up phylogeny metrics 
     /*
     // Take diversity snapshot
     prog_phen_diversity_file->Update();

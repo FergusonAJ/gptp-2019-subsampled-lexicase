@@ -153,7 +153,7 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id){
                 break;
         }
         if(submitted){
-            org.Record(test_id, submitted_val == training_set.GetOutput(test_id), false);
+            org.Record(test_id, submitted_val == training_set.GetOutput(test_id), true);
         }
         else{
             org.Record(test_id, false, false, test_id % TEST_COHORT_SIZE);

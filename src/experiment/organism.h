@@ -15,7 +15,8 @@ protected:
     enum TestStatus{
         UNTESTED = 0, 
         PASS = 1, 
-        FAIL = 2
+        FAIL = 2, 
+        AUTO_PASS = 3
     };
     genome_t genome;
     size_t num_passes;
@@ -59,7 +60,10 @@ public:
         }
         if(pass){ 
             ++num_passes;
-            status_vec[test_id] = TestStatus::PASS;
+            if(submitted)
+                status_vec[test_id] = TestStatus::PASS;
+            else
+                status_vec[test_id] = TestStatus::AUTO_PASS;
         }
         else{
             ++num_fails;
