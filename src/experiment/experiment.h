@@ -22,8 +22,8 @@
 #include "../gp/TagLinearGP.h"
 #include "../gp/TagLinearGP_InstLib.h"
 #include "../gp/TagLinearGP_Utilities.h"
-#include "../gp/Mutators.h"
-#include "./organism.h"
+    #include "../gp/Mutators.h"
+    #include "./organism.h"
 #include "./Selection.h"
 
 constexpr size_t TAG_WIDTH = 16;
@@ -191,6 +191,12 @@ void Experiment::Setup(const ExperimentConfig& config){
     SetupSelection();    
 
     SetupMutation();
+
+    //TODO: Add smallest pressure
+    world->SetFitFun([this](org_t& org){
+        double fitness =  (double)org.GetNumPasses();
+        return fitness;
+    });
  
     InitializePopulation();
     world->SetAutoMutate(true);
@@ -266,6 +272,15 @@ void Experiment::SetupEvaluation(){
         }
         case DOWNSAMPLED_LEXICASE: {
             std::cout << "Setting up DOWNSAMPLED Lexicase evaluation" << std::endl;
+            program_ids.resize(POP_SIZE);
+            for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+                program_ids[prog_id] = prog_id;
+            }
+            test_case_ids.resize(num_training_cases);
+            for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
+                test_case_ids[test_id] = test_id;
+            }
+            max_passes = TEST_COHORT_SIZE;
             break;
         }
         default: {
@@ -419,7 +434,7 @@ void Experiment::Evaluate(){
             for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
                 org_t & cur_prog = world->GetOrg(program_ids[prog_id]);
                 cur_prog.Reset(num_training_cases, NUM_TESTS);
-                // Test against all test cases in the current cohort
+                // Test against first NUM_TESTS test cases
                 for(size_t test_id = 0; test_id < NUM_TESTS; ++test_id){
                     // Do test
                     SetupSingleTest(cur_prog, test_case_ids[test_id]);
@@ -451,6 +466,20 @@ void Experiment::Evaluate(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
+            // Shuffle order of test cases so we get fresh ones each update
+            emp::Shuffle(*randPtr, program_ids);
+            emp::Shuffle(*randPtr, test_case_ids);
+            // Handle one program at a time
+            for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+                org_t & cur_prog = world->GetOrg(program_ids[prog_id]);
+                cur_prog.Reset(num_training_cases, TEST_COHORT_SIZE);
+                // Test against first NUM_TESTS test cases
+                for(size_t test_id = 0; test_id < NUM_TESTS; ++test_id){
+                    // Do test
+                    SetupSingleTest(cur_prog, test_case_ids[test_id]);
+                    RunSingleTest(cur_prog, test_case_ids[test_id]); 
+                } 
+            }
             break;
         }
         default: {
