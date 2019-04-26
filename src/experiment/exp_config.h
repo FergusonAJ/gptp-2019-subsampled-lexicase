@@ -53,7 +53,7 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     GROUP(LEXICASE_GROUP, "Settings specific to experiments using standard lexicase "
         "(See TREATMENT)"),
     VALUE(LEXICASE_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking a random " 
-        "remaining organism. (0 for no limit, i.e., use as many cases as needed."),
+        "remaining organism. (0 for no limit, i.e., use as many cases as needed.)"),
     VALUE(NUM_TESTS, size_t, 0, "The number of the training test cases to actually use (0 for all)"),
    
     // Data Collection Group 

@@ -56,7 +56,7 @@ protected:
     void SetupDataCollection(); 
     void Step();
     void Evaluate();
-    void Selection();
+    void Select();
     void UpdateRecords();
     void SavePopSnapshot();
     void Update();
@@ -219,9 +219,23 @@ void Experiment::SetupHardware(){
 void Experiment::SetupEvaluation(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
+            std::cout << "Setting up REDUCED Lexicase evaluation" << std::endl;
+            program_ids.resize(POP_SIZE);
+            for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+                program_ids[prog_id] = prog_id;
+            }
+            test_case_ids.resize(num_training_cases);
+            for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
+                test_case_ids[test_id] = test_id;
+            }
+            // Shuffle ONCE
+            emp::Shuffle(*randPtr, program_ids);
+            emp::Shuffle(*randPtr, test_case_ids);
+            max_passes = NUM_TESTS;
             break;
         }
         case COHORT_LEXICASE: {
+            std::cout << "Setting up COHORT Lexicase evaluation" << std::endl;
             if(POP_SIZE % PROG_COHORT_SIZE != 0){
                 std::cout << "Program population size must be evenly divisible by"
                     " the cohort size!" << std::endl;
@@ -251,6 +265,7 @@ void Experiment::SetupEvaluation(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
+            std::cout << "Setting up DOWNSAMPLED Lexicase evaluation" << std::endl;
             break;
         }
         default: {
@@ -265,16 +280,18 @@ void Experiment::SetupEvaluation(){
 void Experiment::SetupSelection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
-            for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
+            std::cout << "Setting up REDUCED Lexicase selection" << std::endl;
+            for(size_t local_test_id = 0; local_test_id < NUM_TESTS; ++local_test_id){
                 lexicase_fit_funcs.push_back(
-                    [test_id](org_t& org){
-                        return org.GetScore(test_id);
+                    [local_test_id](org_t& org){
+                        return org.GetLocalScore(local_test_id);
                     }
                 );        
             }
             break;
         }
         case COHORT_LEXICASE: {
+            std::cout << "Setting up COHORT Lexicase selection" << std::endl;
             // Handle one cohort at a time
             for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
                 lexicase_fit_funcs.push_back(
@@ -286,6 +303,7 @@ void Experiment::SetupSelection(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
+            std::cout << "Setting up DOWNSAMPLED Lexicase selection" << std::endl;
             for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
                 lexicase_fit_funcs.push_back(
                     [local_test_id](org_t& org){
@@ -339,7 +357,7 @@ void Experiment::Run(){
 
 void Experiment::Step(){
     Evaluate();
-    Selection();
+    Select();
     UpdateRecords();
     Update();
 }
@@ -374,6 +392,7 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     COHORT_MAX_FUNCS = config.COHORT_MAX_FUNCS();
     // Standard Lexicase
     LEXICASE_MAX_FUNCS = config.LEXICASE_MAX_FUNCS();
+    NUM_TESTS = config.NUM_TESTS();
     // Data Collection
     OUTPUT_DIR = config.OUTPUT_DIR();
     SNAPSHOT_INTERVAL = config.SNAPSHOT_INTERVAL();
@@ -393,9 +412,24 @@ void Experiment::Evaluate(){
     //Remember to reset hardware and load each program
     switch(treatment_type){
         case REDUCED_LEXICASE: {
+            // Do NOT shuffle - order must be static for test cases
+            // Shouldn't matter for programs
+            
+            // Handle one program at a time
+            for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+                org_t & cur_prog = world->GetOrg(program_ids[prog_id]);
+                cur_prog.Reset(num_training_cases, NUM_TESTS);
+                // Test against all test cases in the current cohort
+                for(size_t test_id = 0; test_id < NUM_TESTS; ++test_id){
+                    // Do test
+                    SetupSingleTest(cur_prog, test_case_ids[test_id]);
+                    RunSingleTest(cur_prog, test_case_ids[test_id]); 
+                } 
+            }
             break;
         }
         case COHORT_LEXICASE: {
+            // Shuffle order for cohorts
             emp::Shuffle(*randPtr, program_ids);
             emp::Shuffle(*randPtr, test_case_ids);
             // Handle one cohort at a time
@@ -428,13 +462,14 @@ void Experiment::Evaluate(){
 
 
 //TODO: Figure out the crazy voodoo magic
-void Experiment::Selection(){
+void Experiment::Select(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
             emp::LexicaseSelectWORKAROUND(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 LEXICASE_MAX_FUNCS);
+            break;
         }
         case COHORT_LEXICASE: {
             for(size_t cohort_id = 0; cohort_id < num_cohorts; ++cohort_id){
