@@ -77,9 +77,19 @@ public:
 
     double GetLocalScore(size_t local_test_id){
         emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
-        double res = local_test_id == TestStatus::PASS;
+        double res = local_status_vec[local_test_id] == TestStatus::PASS;
         return res;
     }
+    
+    double GetScore(size_t test_id){
+        emp_assert(test_id < status_vec.size(), "Trying to get invalid score!");
+        double res = status_vec[test_id] == TestStatus::PASS;
+        return res;
+    }
+    
+    size_t GetNumPasses(){
+        return num_passes;
+    } 
 };
 
 #endif

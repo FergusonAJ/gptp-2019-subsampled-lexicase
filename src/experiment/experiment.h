@@ -3,6 +3,10 @@
 
 #include <iostream>
 #include <algorithm>
+#include <fstream>
+#include <functional>
+#include <sys/stat.h>
+#include <utility>
 
 // Empirical includes
 #include "base/Ptr.h"
@@ -49,10 +53,14 @@ protected:
     void SetupEvaluation(); 
     void SetupSelection(); 
     void SetupMutation(); 
+    void SetupDataCollection(); 
     void Step();
     void Evaluate();
     void Selection();
+    void UpdateRecords();
+    void SavePopSnapshot();
     void Update();
+    bool TestValidation(org_t& org);
     void AddDefaultInstructions(const std::unordered_set<std::string> & includes);
 
     // To be defined per problem
@@ -61,12 +69,18 @@ protected:
     virtual void SetupSingleTest(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified test case 
     virtual void RunSingleTest(org_t& org, size_t test_id) = 0;
+    // Initialize the problem and validation case. 
+    virtual void SetupSingleValidation(org_t& org, size_t test_id) = 0;
+    // Run the given program on the specified validation case 
+    virtual bool RunSingleValidation(org_t& org, size_t test_id) = 0;
 
     // Bookkeeping variables
     bool setup_done = false;
     size_t cur_gen;
     size_t num_training_cases;
     size_t num_test_cases;
+    size_t cur_best_prog_id;
+    size_t cur_update;
     
     // Cohort Lexicase variables
     size_t num_cohorts;
@@ -83,6 +97,13 @@ protected:
     emp::Ptr<world_t> world;
     TreatmentType treatment_type;
     emp::vector<std::function<double(org_t&)>> lexicase_fit_funcs;
+    size_t max_passes;
+    
+    //Stats and the like
+    size_t smallest_solution_size;
+    bool solution_found;
+    size_t update_first_solution_found;
+    size_t current_best_prog_id;
 
     // Configurable parameters read in from .cfg file
     // General
@@ -108,10 +129,18 @@ protected:
     size_t PROBLEM_ID;
     std::string TRAINING_SET_FILENAME;
     std::string TEST_SET_FILENAME;
-    //Cohort Lexicase
+    // Cohort Lexicase
     size_t PROG_COHORT_SIZE;    
     size_t TEST_COHORT_SIZE;   
-    size_t COHORT_MAX_FUNCS; 
+    size_t COHORT_MAX_FUNCS;
+    // Standard Lexicase
+    size_t LEXICASE_MAX_FUNCS;
+    size_t NUM_TESTS;
+    // Data Collection 
+    std::string OUTPUT_DIR;
+    size_t SNAPSHOT_INTERVAL;
+    size_t SUMMARY_STATS_INTERVAL;
+    size_t SOLUTION_SCREEN_INTERVAL;
 
 public: 
     Experiment();
@@ -132,6 +161,8 @@ Experiment::~Experiment(){
     }
 }
 
+//TODO: Initialize record keeping variables up here
+//TODO: Update record keeping variables where appropriate
 void Experiment::Setup(const ExperimentConfig& config){
     if(setup_done){
         std::cout << "Error! You can only setup the experiment one time!" << std::endl;
@@ -144,7 +175,14 @@ void Experiment::Setup(const ExperimentConfig& config){
     treatment_type = (TreatmentType)TREATMENT;
     world = emp::NewPtr<world_t>(*randPtr);
     world->SetPopStruct_Mixed(true);
-    //Setup the different pieces of the experiment
+
+    // Update record keeping vars
+    smallest_solution_size = MAX_PROG_SIZE + 1;
+    solution_found = false;
+    update_first_solution_found = GENERATIONS + 1;
+    current_best_prog_id = 0;
+
+    // Setup the different pieces of the experiment
     SetupHardware();
     SetupProblem(); // This is pure virtual, so to change this we have to 
                     //      change/create a derived class
@@ -209,6 +247,7 @@ void Experiment::SetupEvaluation(){
             for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
                 test_case_ids[test_id] = test_id;
             }
+            max_passes = TEST_COHORT_SIZE;
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
@@ -221,10 +260,18 @@ void Experiment::SetupEvaluation(){
     }
 }
 
-//TODO: Add selection pressure for smaller program size?
+//TODO: Add selection pressure for smaller program size? (For each treatment)
+//TODO: Add other treatments
 void Experiment::SetupSelection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
+            for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
+                lexicase_fit_funcs.push_back(
+                    [test_id](org_t& org){
+                        return org.GetScore(test_id);
+                    }
+                );        
+            }
             break;
         }
         case COHORT_LEXICASE: {
@@ -239,6 +286,13 @@ void Experiment::SetupSelection(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
+            for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
+                lexicase_fit_funcs.push_back(
+                    [local_test_id](org_t& org){
+                        return org.GetLocalScore(local_test_id);
+                    }
+                );        
+            }
             break;
         }
         default: {
@@ -264,14 +318,20 @@ void Experiment::SetupMutation(){
     });
 }
 
+void Experiment::SetupDataCollection(){
+    mkdir(OUTPUT_DIR.c_str(), ACCESSPERMS);
+    if(OUTPUT_DIR.back() != '/')
+        OUTPUT_DIR += '/';
+    
+}
+
 void Experiment::Run(){
     if(!setup_done){
         std::cout << "Error! You must call Setup() before calling run on your experiment!" 
             << std::endl;
         exit(-1);
     }
-    for(size_t cur_gen = 0; cur_gen < GENERATIONS; ++cur_gen){
-        std::cout << "Gen " << cur_gen << std::endl;
+    for(cur_update = 0; cur_update < GENERATIONS; ++cur_update){
         Step();
     }    
     std::cout << "Experiment finished!" << std::endl;
@@ -280,6 +340,7 @@ void Experiment::Run(){
 void Experiment::Step(){
     Evaluate();
     Selection();
+    UpdateRecords();
     Update();
 }
 
@@ -311,6 +372,13 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     PROG_COHORT_SIZE = config.PROG_COHORT_SIZE();
     TEST_COHORT_SIZE = config.TEST_COHORT_SIZE();
     COHORT_MAX_FUNCS = config.COHORT_MAX_FUNCS();
+    // Standard Lexicase
+    LEXICASE_MAX_FUNCS = config.LEXICASE_MAX_FUNCS();
+    // Data Collection
+    OUTPUT_DIR = config.OUTPUT_DIR();
+    SNAPSHOT_INTERVAL = config.SNAPSHOT_INTERVAL();
+    SUMMARY_STATS_INTERVAL = config.SUMMARY_STATS_INTERVAL();
+    SOLUTION_SCREEN_INTERVAL = config.SOLUTION_SCREEN_INTERVAL();
 }
 
 void Experiment::InitializePopulation(){
@@ -363,7 +431,10 @@ void Experiment::Evaluate(){
 void Experiment::Selection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
-            break;
+            emp::LexicaseSelectWORKAROUND(*world,
+                                lexicase_fit_funcs, 
+                                POP_SIZE,
+                                LEXICASE_MAX_FUNCS);
         }
         case COHORT_LEXICASE: {
             for(size_t cohort_id = 0; cohort_id < num_cohorts; ++cohort_id){
@@ -387,6 +458,10 @@ void Experiment::Selection(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
+            emp::LexicaseSelectWORKAROUND(*world,
+                                lexicase_fit_funcs, 
+                                POP_SIZE,
+                                LEXICASE_MAX_FUNCS);
             break;
         }
         default: {
@@ -396,10 +471,94 @@ void Experiment::Selection(){
     }
 }
 
+void Experiment::UpdateRecords(){
+    double cur_best_score = 0.0;
+    for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+        emp_assert(world->IsOccupied(prog_id));
+        org_t& cur_org = world->GetOrg(prog_id);
+        const size_t pass_total = cur_org.GetNumPasses();
+        if(pass_total > cur_best_score){
+            cur_best_score = (double)pass_total;
+            cur_best_prog_id = prog_id;
+        }
+        // Test potential solutions
+        if(pass_total == max_passes){
+            if(TestValidation(cur_org)){
+                if(!solution_found){
+                    update_first_solution_found = cur_update;
+                }
+                solution_found = true;
+                //TODO: Save solution 
+            }
+        } 
+    }
+    if(cur_update % SNAPSHOT_INTERVAL || update_first_solution_found == cur_update || 
+            cur_update >= GENERATIONS -1){
+        SavePopSnapshot();
+    } 
+}
+
+//TODO: THIS
+void Experiment::SavePopSnapshot(){
+    /*
+    std::string snapshot_dir = OUTPUT_DIR + "pop_" + emp::to_string((int)prog_world->GetUpdate());
+    mkdir(snapshot_dir.c_str(), ACCESSPERMS);
+
+    emp::DataFile file(snapshot_dir + "/program_pop_" 
+            + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
+
+    // Add functions to data file.
+    file.AddFun(program_stats.get_id, "program_id", "Program ID");
+
+    file.AddFun(program_stats.get_fitness, "fitness");
+    file.AddFun(program_stats.get_fitness_eval__total_score, "total_score__fitness_eval");
+    file.AddFun(program_stats.get_fitness_eval__num_passes, "num_passes__fitness_eval");
+    file.AddFun(program_stats.get_fitness_eval__num_fails, "num_fails__fitness_eval");
+    file.AddFun(program_stats.get_fitness_eval__num_tests, "num_tests__fitness_eval");
+    file.AddFun(program_stats.get_fitness_eval__passes_by_test, "passes_by_test__fitness_eval");
+
+    file.AddFun(program_stats.get_validation_eval__num_passes, "num_passes__validation_eval");
+    file.AddFun(program_stats.get_validation_eval__num_tests, "num_tests__validation_eval");
+    file.AddFun(program_stats.get_validation_eval__passes_by_test, "passes_by_test__validation_eval");
+
+    file.AddFun(program_stats.get_program_len, "program_len");
+    file.AddFun(program_stats.get_program, "program");
+
+    file.PrintHeaderKeys();
+
+    // For each program in the population, dump the program and anything we want to know about it.
+    for (stats_util.cur_progID = 0; stats_util.cur_progID < prog_world->GetSize(); ++stats_util.cur_progID) {
+    if (!prog_world->IsOccupied(stats_util.cur_progID)) continue;
+    DoTestingSetValidation(prog_world->GetOrg(stats_util.cur_progID)); // Do validation for program.
+    // Update snapshot file
+    file.Update();
+    }
+    // Take diversity snapshot
+    prog_phen_diversity_file->Update();
+    // Snapshot phylogeny
+    prog_genotypic_systematics->Snapshot(snapshot_dir + "/program_phylogeny_" + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
+*/
+}
+
 //TODO: All the record keeping/tracking
 void Experiment::Update(){
+    UpdateRecords();
+    std::cout << "Update: " << cur_update << "; ";
+    std::cout << "Best Score: " << world->CalcFitnessID(current_best_prog_id) << "; ";
+    std::cout << "Solution Found?: " << solution_found << "; ";
+    std::cout << std::endl;
     world->Update();
     world->ClearCache();
+}
+
+bool Experiment::TestValidation(org_t& org){
+    for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
+        SetupSingleValidation(org, test_id);
+        if(!RunSingleValidation(org, test_id)){
+            return false;
+        }
+    }
+    return true;
 }
 
 //TODO: Format this

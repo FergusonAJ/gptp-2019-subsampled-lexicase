@@ -13,7 +13,6 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(POP_SIZE, size_t, 1000, "The size of our evolving population"),
     VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
     
-   
     // Program Group 
     GROUP(PROGRAM_GROUP, "General settings specific to programs."),
     VALUE(MIN_PROG_SIZE, size_t, 1, "Minimum program size"),
@@ -27,7 +26,7 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(MUT_PER_PROG_SLIP, double, 0.05, "Program per-program slip mutation rate."),
     VALUE(MUT_PER_MOD_DUP, double, 0.05, "Program per-module whole-module duplication rate."),
     VALUE(MUT_PER_MOD_DEL, double, 0.05, "Program per-module whole-module deletion rate."),
-
+    
 
     // Hardware Group
     GROUP(HARDWARE, "Virtual evaluation hardware settings"), 
@@ -43,12 +42,31 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(TEST_SET_FILENAME, std::string, "./",  "Path (including name) for the .csv with the "
         "set of validation test cases"),
 
-    //Cohort Lexicase Group
+    // Cohort Lexicase Group
     GROUP(COHORT_LEXICASE_GROUP, "Settings specific to experiments using cohort lexicase (See TREATMENT)"),
     VALUE(PROG_COHORT_SIZE, size_t, 100, "The number of programs in a single cohort"),
     VALUE(TEST_COHORT_SIZE, size_t, 10, "The number of test cases in a single cohort"),
     VALUE(COHORT_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking a random " 
-        "remaining organism. (0 for no limit, i.e., use the PROG_COHORT_SIZE).")
+        "remaining organism. (0 for no limit, i.e., use the PROG_COHORT_SIZE)."),
+    
+    // Standard Lexicase Group
+    GROUP(LEXICASE_GROUP, "Settings specific to experiments using standard lexicase "
+        "(See TREATMENT)"),
+    VALUE(LEXICASE_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking a random " 
+        "remaining organism. (0 for no limit, i.e., use as many cases as needed."),
+    VALUE(NUM_TESTS, size_t, 0, "The number of the training test cases to actually use (0 for all)"),
+   
+    // Data Collection Group 
+    GROUP(DATA_COLLECTION_GROUP, "Settings specific to data collection."),
+    VALUE(OUTPUT_DIR, std::string, "./output/", "Specifies the directory where output files will"
+        " be saved"),   
+    VALUE(SNAPSHOT_INTERVAL, size_t, 1000, "How often should we take population snapshots?"),
+    VALUE(SUMMARY_STATS_INTERVAL, size_t, 1000, "How often should we output summary stats?"),
+    VALUE(SOLUTION_SCREEN_INTERVAL, size_t, 1000, "How often should we screen entire population " 
+        "for solutions?")
+
+
+
 )
 
 #endif

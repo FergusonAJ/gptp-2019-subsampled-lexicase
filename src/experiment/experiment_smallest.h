@@ -26,14 +26,19 @@ class Experiment_Smallest : public Experiment{
         // Implementations of abstract methods from base class
         void SetupProblem();
         void SetupSingleTest(org_t& org, size_t test_id);
+        void SetupSingleValidation(org_t& org, size_t test_id);
         void RunSingleTest(org_t& org, size_t test_id);
+        bool RunSingleValidation(org_t& org, size_t test_id);
+        bool TestValidation(org_t& org);
     
         static std::pair<input_t, output_t> LoadTestCaseFromLine
                 (const emp::vector<std::string>& line);
         static output_t GenCorrectOutput(input_t &input);
 
         void SetupInstructions();
-            
+        void SetupSingle(org_t& org, const input_t& input);
+        bool RunSingle();       
+     
         // Custom virtual hardware instructions
         void Inst_LoadNum1(hardware_t & hw, const inst_t & inst);
         void Inst_LoadNum2(hardware_t & hw, const inst_t & inst);
@@ -47,6 +52,7 @@ class Experiment_Smallest : public Experiment{
 
         // Variables for a specific run
         size_t cur_test_id;
+        size_t cur_validation_id;
         int submitted_val;
         bool submitted;
         
@@ -79,9 +85,8 @@ void Experiment_Smallest::SetupProblem(){
     SetupInstructions();
 }
 
-// Sets up a run for a given program for the specifed test case
-// Returns true if the test should be auto-pass (for "watering down" purposes)
-void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
+// Sets up a run for a given program for the specifed input
+void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
     // Reset virtual hardware (global memory and callstack)
     // This is from Alex and Jose's work (Alex created the virtual hardware system)
     hardware->ResetHardware();
@@ -92,7 +97,6 @@ void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
     submitted_val = 0;
     // Configure inputs.
     if (hardware->GetCallStackSize()) {
-        input_t & input = training_set.GetInput(test_id); // std::pair<int, double>
         hardware_t::CallState & state = hardware->GetCurCallState();
         hardware_t::Memory & wmem = state.GetWorkingMem();
         // Set hardware input.
@@ -100,12 +104,23 @@ void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
         wmem.Set(1, input.first[1]);
         wmem.Set(2, input.first[2]);
         wmem.Set(3, input.first[3]);
-        cur_test_id = test_id;
     }
     else{
         std::cout << "Error in DoSingleTest, GetCallStackSize() returned 0." << std::endl;
         exit(-1);
     }
+}
+
+void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
+    input_t & input = training_set.GetInput(test_id);
+    cur_test_id = test_id;
+    SetupSingle(org, input);
+}
+
+void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
+    input_t & input = test_set.GetInput(test_id);
+    cur_validation_id = test_id;
+    SetupSingle(org, input);
 }
 
 void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id){
@@ -128,6 +143,25 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id){
     }
 }
 
+bool Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
+    // Check for auto-pass cases
+    if(test_set.GetInput(test_id).second){
+        return true;
+    }
+    else{
+        for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
+            hardware->SingleProcess();
+            if(hardware->GetCallStackSize() == 0) 
+                break;
+        }
+        if(submitted){
+            return submitted_val == test_set.GetOutput(test_id);
+        }
+        else{
+            return false;
+        }
+    }
+}
 
 // Directly borrowed from Alex and Jose's work
 std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 

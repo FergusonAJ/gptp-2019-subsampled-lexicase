@@ -318,6 +318,84 @@ namespace emp {
       world.DoBirth(world.GetGenomeAt(worldID), worldID, 1);
     }
   }
+  /// ==LEXICASE== Selection runs through multiple fitness functions in a random order for
+  /// EACH offspring produced.
+  /// @param world The emp::World object with the organisms to be selected.
+  /// @param fit_funs The set of fitness functions to shuffle for each organism reproduced.
+  /// @param repro_count How many rounds of repliction should we do. (default 1)
+  /// @param max_funs The maximum number of fitness functions to use. (use 0 for all; default)
+  template<typename ORG>
+  void LexicaseSelectWORKAROUND(World<ORG> & world,
+                      const emp::vector< std::function<double(ORG &)> > & fit_funs,
+                      size_t repro_count=1,
+                      size_t max_funs=0)
+  {
+    emp_assert(world.GetSize() > 0);
+    emp_assert(fit_funs.size() > 0);
+
+    if (!max_funs) max_funs = fit_funs.size();
+
+    // Determine which positions are occupied.
+    emp::vector<size_t> all_orgs(world.GetSize()), cur_orgs, next_orgs;
+    for (size_t org_id = 0; org_id < world.GetSize(); org_id++) all_orgs[org_id] = org_id;
+
+    // Pre-calculate all fitness info.
+    // (@CAO: Technically should only do this if caching is turned on?)
+    // (@CAO: Also, we should only pre-calculate if we think we need it all.  Lazy eval better?)
+    emp::vector< emp::vector<double> > fitnesses(fit_funs.size());
+    for (size_t fit_id = 0; fit_id < fit_funs.size(); ++fit_id) {
+      fitnesses[fit_id].resize(world.GetSize());
+      for (size_t org_id : all_orgs) {
+        fitnesses[fit_id][org_id] = fit_funs[fit_id](world.GetOrg(all_orgs[org_id]));
+      }
+    }
+
+    for (size_t repro = 0; repro < repro_count; ++repro) {
+      // Determine the current ordering of the functions.
+      // (@CAO: This can be more efficient)
+      emp::vector<size_t> order(max_funs);
+      if (max_funs == fit_funs.size()) {
+        order = GetPermutation(world.GetRandom(), fit_funs.size());
+      } else {
+        for (auto & x : order) x = world.GetRandom().GetUInt(fit_funs.size());
+      }
+
+      // Step through the functions in the proper order.
+      cur_orgs = all_orgs;  // Start with all of the organisms.
+      int depth = -1;
+      for (size_t fit_id : order) {
+        depth++;
+
+        double max_fit = fitnesses[fit_id][cur_orgs[0]];
+        next_orgs.push_back(cur_orgs[0]);
+
+        for (size_t org_id : cur_orgs) {
+          const double cur_fit = fitnesses[fit_id][org_id];
+          if (cur_fit > max_fit) {
+            max_fit = cur_fit;             // This is a the NEW maximum fitness for this function
+            next_orgs.resize(0);           // Clear out orgs with former maximum fitness
+            next_orgs.push_back(org_id);   // Add this org as only one with new max fitness
+          }
+          else if (cur_fit == max_fit) {
+            next_orgs.push_back(org_id);   // Same as cur max fitness -- save this org too.
+          }
+        }
+        // Make next_orgs into new cur_orgs; make cur_orgs allocated space for next_orgs.
+        std::swap(cur_orgs, next_orgs);
+        next_orgs.resize(0);
+
+        if (cur_orgs.size() == 1) break;  // Stop if we're down to just one organism.
+      }
+
+      // Place a random survivor (all equal) into the next generation!
+      emp_assert(cur_orgs.size() > 0, cur_orgs.size(), fit_funs.size(), all_orgs.size());
+      size_t win_id = cur_orgs[ world.GetRandom().GetUInt(cur_orgs.size()) ];
+
+      //TriggerOnLexicaseSelect(world, used, win_id);
+      world.DoBirth( world.GetGenomeAt(win_id), win_id );
+    }
+    // std::cout << "Done with lex" << std::endl;
+  }
 }
 
 #endif
