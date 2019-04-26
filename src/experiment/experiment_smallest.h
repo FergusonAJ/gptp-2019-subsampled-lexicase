@@ -5,6 +5,7 @@
 #include <array>
 #include <utility>
 #include <algorithm>
+#include <cmath>
 
 //Empricial includes
 #include "./base/assert.h"
@@ -25,6 +26,7 @@ class Experiment_Smallest : public Experiment{
     protected:
         // Implementations of abstract methods from base class
         void SetupProblem();
+        void SetupDilution();
         void SetupSingleTest(org_t& org, size_t test_id);
         void SetupSingleValidation(org_t& org, size_t test_id);
         void RunSingleTest(org_t& org, size_t test_id);
@@ -49,13 +51,15 @@ class Experiment_Smallest : public Experiment{
         std::string filename;
         test_case_set_t training_set;
         test_case_set_t test_set;
-
+        size_t num_discriminatory_tests;
+        bool problems_loaded;
+    
         // Variables for a specific run
         size_t cur_test_id;
         size_t cur_validation_id;
         int submitted_val;
         bool submitted;
-        
+         
         
     public:
         Experiment_Smallest();
@@ -64,7 +68,8 @@ class Experiment_Smallest : public Experiment{
 
 Experiment_Smallest::Experiment_Smallest():
     training_set(this_t::LoadTestCaseFromLine),
-    test_set(this_t::LoadTestCaseFromLine){
+    test_set(this_t::LoadTestCaseFromLine),
+    problems_loaded(false){
 }
 
 Experiment_Smallest::~Experiment_Smallest(){
@@ -83,6 +88,7 @@ void Experiment_Smallest::SetupProblem(){
     num_training_cases = training_set.GetSize();
     num_test_cases = test_set.GetSize();
     SetupInstructions();
+    problems_loaded = true;
 }
 
 // Sets up a run for a given program for the specifed input
@@ -108,6 +114,19 @@ void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
     else{
         std::cout << "Error in DoSingleTest, GetCallStackSize() returned 0." << std::endl;
         exit(-1);
+    }
+}
+
+void Experiment_Smallest::SetupDilution(){
+    if(!problems_loaded){
+        std::cout << "Cannot dilute problems that have not been loaded. Terminating." << std::endl;
+        exit(-1);
+    }
+    num_discriminatory_tests = (size_t)ceil(training_set.GetSize() * (1 - DILUTION_PCT));
+    std::cout << "Number of discriminatory tests: " << num_discriminatory_tests << std::endl;
+    emp_assert(num_discriminatory != 0, "Dilution percentage cannot be 0!");
+    for(size_t test_id = num_discriminatory_tests; test_id < training_set.GetSize(); ++test_id){
+        training_set.GetInput(test_id).second = true; 
     }
 }
 
@@ -165,7 +184,8 @@ bool Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
 
 // Directly borrowed from Alex and Jose's work
 std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 
-        Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
+            Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
+    emp_assert(dilution_setup, "You must set up the dilution before loading test cases!");
     input_t input;   
     output_t output; 
     // Load input.

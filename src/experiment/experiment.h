@@ -65,6 +65,8 @@ protected:
 
     // To be defined per problem
     virtual void SetupProblem() = 0;
+    // Make some tests non-discrimnatory
+    virtual void SetupDilution() = 0;
     // Initialize the problem and test case. 
     virtual void SetupSingleTest(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified test case 
@@ -111,6 +113,7 @@ protected:
     size_t TREATMENT;
     size_t POP_SIZE;
     size_t GENERATIONS;
+    double DILUTION_PCT;
     // Program
     size_t MIN_PROG_SIZE;
     size_t MAX_PROG_SIZE;
@@ -184,8 +187,12 @@ void Experiment::Setup(const ExperimentConfig& config){
 
     // Setup the different pieces of the experiment
     SetupHardware();
+    
     SetupProblem(); // This is pure virtual, so to change this we have to 
                     //      change/create a derived class
+    
+    SetupDilution(); // Handled by the derived class
+
     SetupEvaluation();
    
     SetupSelection();    
@@ -291,7 +298,6 @@ void Experiment::SetupEvaluation(){
 }
 
 //TODO: Add selection pressure for smaller program size? (For each treatment)
-//TODO: Add other treatments
 void Experiment::SetupSelection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
@@ -383,6 +389,7 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     TREATMENT = config.TREATMENT(); 
     POP_SIZE = config.POP_SIZE(); 
     GENERATIONS = config.GENERATIONS(); 
+    DILUTION_PCT = config.DILUTION_PCT();
     // Program
     MIN_PROG_SIZE = config.MIN_PROG_SIZE();
     MAX_PROG_SIZE = config.MAX_PROG_SIZE();
@@ -421,8 +428,6 @@ void Experiment::InitializePopulation(){
             MAX_PROG_SIZE), 1);      
 }
 
-//TODO: Keep tabs of best solutions thus far
-//TODO: Hook up other treatments
 void Experiment::Evaluate(){
     //Remember to reset hardware and load each program
     switch(treatment_type){

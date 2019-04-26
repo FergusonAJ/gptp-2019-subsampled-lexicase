@@ -12,6 +12,8 @@ EMP_BUILD_CONFIG(ExperimentConfig,
         " 2 for Downsampled Lexicase"),
     VALUE(POP_SIZE, size_t, 1000, "The size of our evolving population"),
     VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
+    VALUE(DILUTION_PCT, double, 0.0, "The percentage of tests that will be auto-pass "
+        "(non-discriminatory)"),
     
     // Program Group 
     GROUP(PROGRAM_GROUP, "General settings specific to programs."),
