@@ -10,7 +10,9 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(SEED, int, 0, "Random number seed (-1 to use current time)"),
     VALUE(TREATMENT, size_t, 0, "0 for Reduced Lexicase, 1 for Cohort Lexicase,"
         " 2 for Downsampled Lexicase"),
-    VALUE(POP_SIZE, size_t, 256, "The size of our evolving population"),
+    VALUE(POP_SIZE, size_t, 1000, "The size of our evolving population"),
+    VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
+    
    
     // Program Group 
     GROUP(PROGRAM_GROUP, "General settings specific to programs."),
@@ -27,7 +29,16 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     
     // Problem Group 
     GROUP(PROBLEM_GROUP, "General settings for constructing a problem"),
-    VALUE(PROBLEM_ID, size_t, 0, "Which problem to test on? (0 for smallest)")
+    VALUE(PROBLEM_ID, size_t, 0, "Which problem to test on? (0 for smallest)"),
+    VALUE(TRAINING_SET_FILENAME, std::string, "./",  "Path (including name) for the .csv with the "
+        "set of training test cases"),
+    VALUE(TEST_SET_FILENAME, std::string, "./",  "Path (including name) for the .csv with the "
+        "set of validation test cases"),
+
+    //Cohort Lexicase Group
+    GROUP(COHORT_LEXICASE_GROUP, "Settings specific to experiments using cohort lexicase (See TREATMENT)"),
+    VALUE(PROG_COHORT_SIZE, size_t, 100, "The number of programs in a single cohort"),
+    VALUE(TEST_COHORT_SIZE, size_t, 10, "The number of test cases in a single cohort")
 )
 
 #endif
