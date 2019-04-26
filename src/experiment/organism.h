@@ -33,6 +33,9 @@ public:
     const genome_t & GetGenome() const { 
         return genome;
     }
+    genome_t & GetGenome() { 
+        return genome;
+    }
 
     void Reset(size_t num_cases){
         num_passes = 0;   
@@ -74,7 +77,8 @@ public:
 
     double GetLocalScore(size_t local_test_id){
         emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
-        return (double)(local_test_id == TestStatus::PASS);
+        double res = local_test_id == TestStatus::PASS;
+        return res;
     }
 };
 

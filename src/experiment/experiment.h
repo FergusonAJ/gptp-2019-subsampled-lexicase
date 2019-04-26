@@ -18,8 +18,9 @@
 #include "../gp/TagLinearGP.h"
 #include "../gp/TagLinearGP_InstLib.h"
 #include "../gp/TagLinearGP_Utilities.h"
-#include "./Selection.h"
+#include "../gp/Mutators.h"
 #include "./organism.h"
+#include "./Selection.h"
 
 constexpr size_t TAG_WIDTH = 16;
 constexpr size_t MEM_SIZE = TAG_WIDTH;
@@ -47,6 +48,7 @@ protected:
     void SetupHardware(); 
     void SetupEvaluation(); 
     void SetupSelection(); 
+    void SetupMutation(); 
     void Step();
     void Evaluate();
     void Selection();
@@ -75,6 +77,7 @@ protected:
     emp::Ptr<inst_lib_t> inst_lib;
     emp::Ptr<hardware_t> hardware;
     emp::BitSet<TAG_WIDTH> call_tag;   
+    TagLGPMutator<TAG_WIDTH> mutator;
  
     //Evolution variables
     emp::Ptr<world_t> world;
@@ -91,6 +94,13 @@ protected:
     size_t MIN_PROG_SIZE;
     size_t MAX_PROG_SIZE;
     size_t PROG_EVAL_TIME;
+    double MUT_PER_BIT_FLIP;
+    double MUT_PER_INST_SUB;
+    double MUT_PER_INST_INS;
+    double MUT_PER_INST_DEL;
+    double MUT_PER_PROG_SLIP;
+    double MUT_PER_MOD_DUP;
+    double MUT_PER_MOD_DEL;
     // Hardware
     double MIN_TAG_SPECIFICITY;
     size_t MAX_CALL_DEPTH;
@@ -141,6 +151,8 @@ void Experiment::Setup(const ExperimentConfig& config){
     SetupEvaluation();
    
     SetupSelection();    
+
+    SetupMutation();
  
     InitializePopulation();
     world->SetAutoMutate(true);
@@ -217,14 +229,12 @@ void Experiment::SetupSelection(){
         }
         case COHORT_LEXICASE: {
             // Handle one cohort at a time
-            for(size_t cohort_id = 0; cohort_id < num_cohorts; ++cohort_id){
-                for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
-                    lexicase_fit_funcs.push_back(
-                        [local_test_id](org_t& org){
-                            return org.GetLocalScore(local_test_id);
-                        }
-                    );        
-                }
+            for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
+                lexicase_fit_funcs.push_back(
+                    [local_test_id](org_t& org){
+                        return org.GetLocalScore(local_test_id);
+                    }
+                );        
             }
             break;
         }
@@ -236,6 +246,22 @@ void Experiment::SetupSelection(){
             exit(-1);
         };
     }
+}
+
+void Experiment::SetupMutation(){
+    // Configure the mutator for the program's genomes
+    mutator.MAX_PROGRAM_LEN = MAX_PROG_SIZE;
+    mutator.MIN_PROGRAM_LEN = MIN_PROG_SIZE;
+    mutator.PER_BIT_FLIP = MUT_PER_BIT_FLIP;
+    mutator.PER_INST_SUB = MUT_PER_INST_SUB;
+    mutator.PER_INST_INS = MUT_PER_INST_INS;
+    mutator.PER_INST_DEL = MUT_PER_INST_DEL;
+    mutator.PER_PROG_SLIP = MUT_PER_PROG_SLIP;
+    mutator.PER_MOD_DUP = MUT_PER_MOD_DUP;
+    mutator.PER_MOD_DEL = MUT_PER_MOD_DEL;
+    world->SetMutFun([this](org_t& org, emp::Random& rnd){
+        return mutator.Mutate(rnd, org.GetGenome());
+    });
 }
 
 void Experiment::Run(){
@@ -267,6 +293,13 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     MIN_PROG_SIZE = config.MIN_PROG_SIZE();
     MAX_PROG_SIZE = config.MAX_PROG_SIZE();
     PROG_EVAL_TIME = config.PROG_EVAL_TIME();
+    MUT_PER_BIT_FLIP = config.MUT_PER_BIT_FLIP();
+    MUT_PER_INST_SUB = config.MUT_PER_INST_SUB();
+    MUT_PER_INST_INS = config.MUT_PER_INST_INS();
+    MUT_PER_INST_DEL = config.MUT_PER_INST_DEL();
+    MUT_PER_PROG_SLIP = config.MUT_PER_PROG_SLIP();
+    MUT_PER_MOD_DUP = config.MUT_PER_PROG_SLIP();
+    MUT_PER_MOD_DEL = config.MUT_PER_MOD_DEL();
     // Hardware
     MIN_TAG_SPECIFICITY = config.MIN_TAG_SPECIFICITY();
     MAX_CALL_DEPTH = config.MAX_CALL_DEPTH();
@@ -325,6 +358,8 @@ void Experiment::Evaluate(){
     }
 }
 
+
+//TODO: Figure out the crazy voodoo magic
 void Experiment::Selection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
@@ -336,12 +371,18 @@ void Experiment::Selection(){
                         program_ids.begin() + (cohort_id * PROG_COHORT_SIZE),
                         program_ids.begin() + ((cohort_id + 1) * PROG_COHORT_SIZE)
                 );
+                emp::CohortLexicaseSelect(*world,
+                                                lexicase_fit_funcs,
+                                                cur_cohort,
+                                                PROG_COHORT_SIZE,
+                                                COHORT_MAX_FUNCS);
+                /*
                 emp::CohortLexicaseSelect_NAIVE(*world,
                                                 lexicase_fit_funcs,
                                                 cur_cohort,
                                                 PROG_COHORT_SIZE,
-                                                COHORT_MAX_FUNCS
-                );
+                                                COHORT_MAX_FUNCS);
+                */
             }
             break;
         }
@@ -355,7 +396,10 @@ void Experiment::Selection(){
     }
 }
 
+//TODO: All the record keeping/tracking
 void Experiment::Update(){
+    world->Update();
+    world->ClearCache();
 }
 
 //TODO: Format this

@@ -20,6 +20,14 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(MAX_PROG_SIZE, size_t, 128, "Maximum program size"),
     VALUE(PROG_EVAL_TIME, size_t, 256, "How many clock cycles should we give a program"
         " during a test?"),
+    VALUE(MUT_PER_BIT_FLIP, double, 0.001, "Program per-bit flip rate."),
+    VALUE(MUT_PER_INST_SUB, double, 0.005, "Program per-instruction substitution mutation rate."),
+    VALUE(MUT_PER_INST_INS, double, 0.005, "Program per-instruction insertion mutation rate."),
+    VALUE(MUT_PER_INST_DEL, double, 0.005, "Program per-instruction deletion mutation rate."),
+    VALUE(MUT_PER_PROG_SLIP, double, 0.05, "Program per-program slip mutation rate."),
+    VALUE(MUT_PER_MOD_DUP, double, 0.05, "Program per-module whole-module duplication rate."),
+    VALUE(MUT_PER_MOD_DEL, double, 0.05, "Program per-module whole-module deletion rate."),
+
 
     // Hardware Group
     GROUP(HARDWARE, "Virtual evaluation hardware settings"), 

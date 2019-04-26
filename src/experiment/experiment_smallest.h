@@ -12,6 +12,7 @@
 //Local includes
 #include "./experiment.h"
 #include "./TestCaseSet.h"
+#include "Selection.h"
 
 class Experiment_Smallest : public Experiment{
     public:
@@ -26,12 +27,13 @@ class Experiment_Smallest : public Experiment{
         void SetupProblem();
         void SetupSingleTest(org_t& org, size_t test_id);
         void RunSingleTest(org_t& org, size_t test_id);
-        void SetupInstructions();
-
+    
         static std::pair<input_t, output_t> LoadTestCaseFromLine
                 (const emp::vector<std::string>& line);
         static output_t GenCorrectOutput(input_t &input);
 
+        void SetupInstructions();
+            
         // Custom virtual hardware instructions
         void Inst_LoadNum1(hardware_t & hw, const inst_t & inst);
         void Inst_LoadNum2(hardware_t & hw, const inst_t & inst);

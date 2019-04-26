@@ -13,6 +13,11 @@ all: ./src/main.cc
 
 debug: ./src/main.cc
 	$(CXX) ./src/main.cc $(CFLAGS) $(OFLAGS_debug) -o gptp2019
+pre: ./src/main.cc
+	$(CXX) -E ./src/main.cc $(CFLAGS) $(OFLAGS_debug)
+
+s: ./src/main.cc
+	$(CXX) -S ./src/main.cc $(CFLAGS) $(OFLAGS_debug)
 
 clean:
 	rm ./gptp2019

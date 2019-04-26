@@ -15,6 +15,7 @@
 namespace emp {
   template<typename ORG> class World;
 
+
   /// NOTE: This method was a copy-pasta version of the Empirical lexicase select.
   /// - Needed to modify internals to support experiment
   template<typename ORG>
@@ -97,7 +98,7 @@ namespace emp {
       world.DoBirth(world.GetGenomeAt(reproID), reproID);
     }
   }
-
+  
   /// ==COHORT-LEXICASE== Selection runs through multiple fitness functions in a random order for
   /// EACH offspring produced. Only run select from population IDs specified by cohort vector.
   /// @param world The emp::World object with the organisms to be selected.
@@ -169,7 +170,6 @@ namespace emp {
       world.DoBirth(world.GetGenomeAt(reproID), reproID);
     }
   }
-
   /// ==COHORT-LEXICASE== Selection runs through multiple fitness functions in a random order for
   /// EACH offspring produced. Only run select from population IDs specified by cohort vector.
   /// @param world The emp::World object with the organisms to be selected.
@@ -318,7 +318,6 @@ namespace emp {
       world.DoBirth(world.GetGenomeAt(worldID), worldID, 1);
     }
   }
-
 }
 
 #endif

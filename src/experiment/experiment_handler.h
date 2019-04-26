@@ -10,7 +10,6 @@
 #include "./base/Ptr.h"
 #include "./base/assert.h"
 // Local includes
-#include "./experiment.h"
 #include "./experiment_smallest.h"
 
 class ExperimentHandler{
