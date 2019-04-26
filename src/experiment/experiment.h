@@ -32,6 +32,7 @@ constexpr size_t MEM_SIZE = TAG_WIDTH;
 class Experiment{
 public:
     using org_t = Organism<TAG_WIDTH>;
+    using org_gen_t = Organism<TAG_WIDTH>::genome_t;
     
     using world_t = emp::World<org_t>;
     
@@ -44,7 +45,36 @@ public:
         COHORT_LEXICASE, 
         DOWNSAMPLED_LEXICASE
     };
+    struct ProgramStats{
+        // Generic stuff
+        std::function<size_t(void)> get_id;
+        std::function<double(void)> get_fitness;
 
+        // Fitness evaluation stats
+        std::function<double(void)> get_fitness_eval__total_score;
+        std::function<size_t(void)> get_fitness_eval__num_passes;           
+        std::function<size_t(void)> get_fitness_eval__num_fails;
+        std::function<size_t(void)> get_fitness_eval__num_tests;
+        std::function<std::string(void)> get_fitness_eval__passes_by_test;
+
+        // program validation stats
+        std::function<size_t(void)> get_validation_eval__num_passes;
+        std::function<size_t(void)> get_validation_eval__num_tests;
+        std::function<std::string(void)> get_validation_eval__passes_by_test;
+        
+        std::function<double(void)> get_prog_behavioral_diversity;
+        std::function<double(void)> get_prog_unique_behavioral_phenotypes;
+    
+        // program 'morphology' stats
+        std::function<size_t(void)> get_program_len;
+        std::function<std::string(void)> get_program;
+    } program_stats;
+    struct TestResult{
+        bool passed;
+        bool submitted;
+        TestResult(bool p, bool s) : passed(p), submitted(s) { ; }
+        TestResult() : passed(false), submitted(false) { ; }
+    };
 protected:
     emp::Ptr<emp::Random> randPtr;
     void CopyConfig(const ExperimentConfig& config);
@@ -54,6 +84,7 @@ protected:
     void SetupSelection(); 
     void SetupMutation(); 
     void SetupDataCollection(); 
+    void SetupDataCollectionFunctions(); 
     void Step();
     void Evaluate();
     void Select();
@@ -61,6 +92,7 @@ protected:
     void SavePopSnapshot();
     void Update();
     bool TestValidation(org_t& org);
+    void RunAllValidations(org_t& org);
     void AddDefaultInstructions(const std::unordered_set<std::string> & includes);
 
     // To be defined per problem
@@ -74,7 +106,7 @@ protected:
     // Initialize the problem and validation case. 
     virtual void SetupSingleValidation(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified validation case 
-    virtual bool RunSingleValidation(org_t& org, size_t test_id) = 0;
+    virtual TestResult RunSingleValidation(org_t& org, size_t test_id) = 0;
 
     // Bookkeeping variables
     bool setup_done = false;
@@ -106,6 +138,11 @@ protected:
     bool solution_found;
     size_t update_first_solution_found;
     size_t current_best_prog_id;
+    size_t stats_focus_org_id;
+    emp::vector<TestResult> validation_results;
+    size_t validation_passes;
+    size_t validation_fails;
+    size_t validation_submissions;
 
     // Configurable parameters read in from .cfg file
     // General
@@ -201,7 +238,7 @@ void Experiment::Setup(const ExperimentConfig& config){
 
     //TODO: Add smallest pressure
     world->SetFitFun([this](org_t& org){
-        double fitness =  (double)org.GetNumPasses();
+        double fitness = (double)org.GetNumPasses();
         return fitness;
     });
  
@@ -301,6 +338,9 @@ void Experiment::SetupEvaluation(){
 void Experiment::SetupSelection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
+            if(NUM_TESTS == 0){
+                NUM_TESTS = num_training_cases;
+            }
             std::cout << "Setting up REDUCED Lexicase selection" << std::endl;
             for(size_t local_test_id = 0; local_test_id < NUM_TESTS; ++local_test_id){
                 lexicase_fit_funcs.push_back(
@@ -362,6 +402,87 @@ void Experiment::SetupDataCollection(){
     if(OUTPUT_DIR.back() != '/')
         OUTPUT_DIR += '/';
     
+    std::function<size_t(void)> get_update = [this]() { return world->GetUpdate(); };
+    std::function<double(void)> get_evaluations = [this]() {
+        if(treatment_type == REDUCED_LEXICASE)
+           return (double)(world->GetUpdate() * POP_SIZE * NUM_TESTS); 
+        else if(treatment_type == COHORT_LEXICASE)
+            return (double)(world->GetUpdate() * PROG_COHORT_SIZE * TEST_COHORT_SIZE * num_cohorts); 
+        else if(treatment_type == DOWNSAMPLED_LEXICASE)
+            return (double)(world->GetUpdate() * POP_SIZE * TEST_COHORT_SIZE);
+        else
+            return 0.0;
+    };
+}
+
+void Experiment::SetupDataCollectionFunctions(){
+    // Setup program stats functions.
+
+    // Training
+    program_stats.get_id = [this]() { 
+        return stats_focus_org_id; 
+    };
+  
+    program_stats.get_fitness = [this]() { 
+        return world->CalcFitnessID(stats_focus_org_id); 
+    };
+     
+    program_stats.get_fitness_eval__total_score = [this]() { 
+        return world->GetOrg(stats_focus_org_id).GetNumPasses(); 
+    };
+  
+    program_stats.get_fitness_eval__num_passes = [this]() { 
+        return world->GetOrg(stats_focus_org_id).GetNumPasses(); 
+    };
+
+    program_stats.get_fitness_eval__num_fails = [this]() { 
+        return world->GetOrg(stats_focus_org_id).GetNumPasses(); 
+    };
+
+    program_stats.get_fitness_eval__num_tests = [this]() { 
+        return world->GetOrg(stats_focus_org_id).GetLocalSize(); 
+    };
+
+    program_stats.get_fitness_eval__passes_by_test = [this]() { 
+        org_t & org = world->GetOrg(stats_focus_org_id);
+        std::string scores = "\"[";
+        for (size_t test_id = 0; test_id < max_passes; ++test_id) {
+            if (test_id) scores += ",";
+                scores += emp::to_string(org.GetRawScore(test_id));
+        }
+        scores += "]\"";
+        return scores;
+    };
+
+    // Validation
+    program_stats.get_validation_eval__num_passes = [this]() {
+        return validation_passes;
+    };
+
+    program_stats.get_validation_eval__num_tests = [this]() {
+        return num_test_cases;
+    };
+
+    program_stats.get_validation_eval__passes_by_test = [this]() {
+        std::string scores = "\"[";
+        for (size_t test_id = 0; test_id < num_test_cases; ++test_id) {
+            if (test_id) scores += ",";
+                scores += emp::to_string((size_t)validation_results[test_id].passed);
+        }
+        scores += "]\"";
+        return scores; 
+    };
+
+    // Misc.
+    program_stats.get_program_len = [this]() {
+        return world->GetOrg(stats_focus_org_id).GetGenome().GetSize();
+    };
+
+    program_stats.get_program = [this]() {
+        std::ostringstream stream;
+        world->GetOrg(stats_focus_org_id).GetGenome().PrintCSVEntry(stream);
+        return stream.str();
+    }; 
 }
 
 void Experiment::Run(){
@@ -596,17 +717,24 @@ void Experiment::SavePopSnapshot(){
     file.PrintHeaderKeys();
 
     // For each program in the population, dump the program and anything we want to know about it.
-    for (stats_util.cur_progID = 0; stats_util.cur_progID < prog_world->GetSize(); ++stats_util.cur_progID) {
-    if (!prog_world->IsOccupied(stats_util.cur_progID)) continue;
-    DoTestingSetValidation(prog_world->GetOrg(stats_util.cur_progID)); // Do validation for program.
-    // Update snapshot file
-    file.Update();
+    for (stats_util.cur_progID = 0; stats_util.cur_progID < prog_world->GetSize(); 
+            ++stats_util.cur_progID) {
+        if (!prog_world->IsOccupied(stats_util.cur_progID)) continue;
+            //Do Validation check 
+            DoTestingSetValidation(prog_world->GetOrg(stats_util.cur_progID));
+        // Update snapshot file
+        file.Update();
     }
+    */
+   //TODO: Hook up phylogeny
+    
+    /*
     // Take diversity snapshot
     prog_phen_diversity_file->Update();
     // Snapshot phylogeny
-    prog_genotypic_systematics->Snapshot(snapshot_dir + "/program_phylogeny_" + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
-*/
+    prog_genotypic_systematics->Snapshot(snapshot_dir + 
+            "/program_phylogeny_" + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
+    */
 }
 
 //TODO: All the record keeping/tracking
@@ -623,11 +751,28 @@ void Experiment::Update(){
 bool Experiment::TestValidation(org_t& org){
     for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
         SetupSingleValidation(org, test_id);
-        if(!RunSingleValidation(org, test_id)){
+        if(!RunSingleValidation(org, test_id).passed){
             return false;
         }
     }
     return true;
+}
+
+void Experiment::RunAllValidations(org_t& org){
+    validation_results.resize(num_test_cases, TestResult());
+    validation_passes = 0;  
+    validation_fails = 0;  
+    validation_submissions = 0;  
+    for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
+        SetupSingleValidation(org, test_id);
+        validation_results[test_id] = RunSingleValidation(org, test_id);
+        if(validation_results[test_id].passed)
+            ++validation_passes;
+        else
+            ++validation_fails;
+        if(validation_results[test_id].submitted)
+            ++validation_submissions;
+    }
 }
 
 //TODO: Format this

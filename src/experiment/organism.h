@@ -23,6 +23,8 @@ protected:
     size_t num_submissions;
     emp::vector<TestStatus> status_vec; // Covers every single test case
     emp::vector<TestStatus> local_status_vec; // Only covers the cases to be encountered
+    
+
 public:
     Organism(){
     }
@@ -86,9 +88,29 @@ public:
         double res = status_vec[test_id] == TestStatus::PASS;
         return res;
     }
-    
+
+    //Also shows if its unseen   
+    size_t GetRawScore(size_t test_id){
+        emp_assert(test_id < status_vec.size(), "Trying to get invalid score!");
+        return (size_t)status_vec[test_id];
+    }
+ 
     size_t GetNumPasses(){
         return num_passes;
+    } 
+    
+    size_t GetNumFails(){
+        return num_fails;
+    } 
+    
+    size_t GetNumSubmissions(){
+        return num_submissions;
+    }
+
+    size_t GetLocalSize(){
+        if(local_status_vec.size() == 0)
+            return status_vec.size();
+        return local_status_vec.size();        
     } 
 };
 

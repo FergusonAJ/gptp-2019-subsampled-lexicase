@@ -30,8 +30,7 @@ class Experiment_Smallest : public Experiment{
         void SetupSingleTest(org_t& org, size_t test_id);
         void SetupSingleValidation(org_t& org, size_t test_id);
         void RunSingleTest(org_t& org, size_t test_id);
-        bool RunSingleValidation(org_t& org, size_t test_id);
-        bool TestValidation(org_t& org);
+        TestResult RunSingleValidation(org_t& org, size_t test_id);
     
         static std::pair<input_t, output_t> LoadTestCaseFromLine
                 (const emp::vector<std::string>& line);
@@ -124,7 +123,7 @@ void Experiment_Smallest::SetupDilution(){
     }
     num_discriminatory_tests = (size_t)ceil(training_set.GetSize() * (1 - DILUTION_PCT));
     std::cout << "Number of discriminatory tests: " << num_discriminatory_tests << std::endl;
-    emp_assert(num_discriminatory != 0, "Dilution percentage cannot be 0!");
+    emp_assert(num_discriminatory_tests != 0, "Dilution percentage cannot be 0!");
     for(size_t test_id = num_discriminatory_tests; test_id < training_set.GetSize(); ++test_id){
         training_set.GetInput(test_id).second = true; 
     }
@@ -162,10 +161,10 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id){
     }
 }
 
-bool Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
+Experiment::TestResult Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
     // Check for auto-pass cases
     if(test_set.GetInput(test_id).second){
-        return true;
+        return TestResult(true, false);
     }
     else{
         for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
@@ -174,18 +173,16 @@ bool Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
                 break;
         }
         if(submitted){
-            return submitted_val == test_set.GetOutput(test_id);
+            return TestResult(submitted_val == test_set.GetOutput(test_id), false);
         }
         else{
-            return false;
+            return TestResult(false, false);
         }
     }
 }
 
-// Directly borrowed from Alex and Jose's work
 std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 
             Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
-    emp_assert(dilution_setup, "You must set up the dilution before loading test cases!");
     input_t input;   
     output_t output; 
     // Load input.
@@ -198,7 +195,7 @@ std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t>
     output = std::atof(line[4].c_str());
     emp_assert(output == GenCorrectOutput(input));
     return {input, output};
-  }
+}
 
 Experiment_Smallest::output_t Experiment_Smallest::GenCorrectOutput(input_t &input){
     return *std::min_element(input.first.begin(), input.first.end());
