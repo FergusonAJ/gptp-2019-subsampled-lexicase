@@ -491,7 +491,7 @@ void Experiment::SetupDataCollection(){
     solution_file->AddFun(program_stats.get_program, "program");
     solution_file->PrintHeaderKeys();
     // Setup generic fitness tracking
-    world->SetupFitnessFile(OUTPUT_DIR + "/fitness.csv").SetTimingRepeat(SUMMARY_STATS_INTERVAL);
+    world->SetupFitnessFile(OUTPUT_DIR + "/fitness.csv").SetTimingRepeat(1);
 }
 
 void Experiment::SetupDataCollectionFunctions(){
