@@ -29,7 +29,7 @@ class Experiment_Smallest : public Experiment{
         void SetupDilution();
         void SetupSingleTest(org_t& org, size_t test_id);
         void SetupSingleValidation(org_t& org, size_t test_id);
-        void RunSingleTest(org_t& org, size_t test_id);
+        void RunSingleTest(org_t& org, size_t test_id, size_t local_test_id);
         TestResult RunSingleValidation(org_t& org, size_t test_id);
     
         static std::pair<input_t, output_t> LoadTestCaseFromLine
@@ -94,7 +94,7 @@ void Experiment_Smallest::SetupProblem(){
 void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
     // Reset virtual hardware (global memory and callstack)
     // This is from Alex and Jose's work (Alex created the virtual hardware system)
-    hardware->ResetHardware();
+    hardware->Reset();
     hardware->SetProgram(org.GetGenome());
     hardware->CallModule(call_tag, MIN_TAG_SPECIFICITY, true, false); 
     emp_assert(hardware->GetMemSize() >= 4, "Smallest requires a memory size of at least 4");
@@ -123,7 +123,10 @@ void Experiment_Smallest::SetupDilution(){
     }
     num_discriminatory_tests = (size_t)ceil(training_set.GetSize() * (1 - DILUTION_PCT));
     std::cout << "Number of discriminatory tests: " << num_discriminatory_tests << std::endl;
-    emp_assert(num_discriminatory_tests != 0, "Dilution percentage cannot be 0!");
+    if(num_discriminatory_tests == 0){
+        std::cout << "Dilution percentage cannot be too close to 100%!" << std::endl;
+        exit(-1);
+    }
     for(size_t test_id = num_discriminatory_tests; test_id < training_set.GetSize(); ++test_id){
         training_set.GetInput(test_id).second = true; 
     }
@@ -141,22 +144,23 @@ void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id){
+void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
     // Check for auto-pass cases
     if(training_set.GetInput(test_id).second){
-        org.Record(test_id, true, false);
-    }
-    else{
-        for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
-            hardware->SingleProcess();
-            if(hardware->GetCallStackSize() == 0) 
-                break;
-        }
-        if(submitted){
-            org.Record(test_id, submitted_val == training_set.GetOutput(test_id), true);
+            org.Record(test_id, true, false, local_test_id);
         }
         else{
-            org.Record(test_id, false, false, test_id % TEST_COHORT_SIZE);
+            for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
+                hardware->SingleProcess();
+                if(hardware->GetCallStackSize() == 0) 
+                    break;
+            }
+            if(submitted){
+                org.Record(test_id, submitted_val == training_set.GetOutput(test_id),
+                    true, local_test_id);
+            }
+            else{
+                org.Record(test_id, false, false, local_test_id);
         }
     }
 }

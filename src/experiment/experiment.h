@@ -31,6 +31,7 @@ constexpr size_t MEM_SIZE = TAG_WIDTH;
 
 class Experiment{
 public:
+    //Handy aliases
     using org_t = Organism<TAG_WIDTH>;
     using org_gen_t = Organism<TAG_WIDTH>::genome_t;
     
@@ -102,7 +103,7 @@ protected:
     // Initialize the problem and test case. 
     virtual void SetupSingleTest(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified test case 
-    virtual void RunSingleTest(org_t& org, size_t test_id) = 0;
+    virtual void RunSingleTest(org_t& org, size_t test_id, size_t local_test_id) = 0;
     // Initialize the problem and validation case. 
     virtual void SetupSingleValidation(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified validation case 
@@ -178,6 +179,9 @@ protected:
     // Standard Lexicase
     size_t LEXICASE_MAX_FUNCS;
     size_t NUM_TESTS;
+    // Downsampled Lexicase
+    size_t DOWNSAMPLED_MAX_FUNCS;
+    size_t DOWNSAMPLED_NUM_TESTS;
     // Data Collection 
     std::string OUTPUT_DIR;
     size_t SNAPSHOT_INTERVAL;
@@ -191,21 +195,22 @@ public:
     void Run();
 };
 
-Experiment::Experiment(){
+Experiment::Experiment(): setup_done(false), cur_update(0), solution_found(false){
 
 }
 
+//TODO: Delete phylo ptr if implemented
 Experiment::~Experiment(){
     std::cout << "Cleaning up experiment..." << std::endl;
     if(setup_done){
         solution_file.Delete();
+        hardware.Delete();
+        inst_lib.Delete();
         world.Delete();
         randPtr.Delete();
     }
 }
 
-//TODO: Initialize record keeping variables up here
-//TODO: Update record keeping variables where appropriate
 void Experiment::Setup(const ExperimentConfig& config){
     if(setup_done){
         std::cout << "Error! You can only setup the experiment one time!" << std::endl;
@@ -253,10 +258,52 @@ void Experiment::Setup(const ExperimentConfig& config){
     });
  
     InitializePopulation();
-    world->SetAutoMutate(true);
+    world->SetAutoMutate();
     setup_done = true;
 }
     
+void Experiment::CopyConfig(const ExperimentConfig& config){
+    // General 
+    SEED = config.SEED(); 
+    TREATMENT = config.TREATMENT(); 
+    POP_SIZE = config.POP_SIZE(); 
+    GENERATIONS = config.GENERATIONS(); 
+    DILUTION_PCT = config.DILUTION_PCT();
+    // Program
+    MIN_PROG_SIZE = config.MIN_PROG_SIZE();
+    MAX_PROG_SIZE = config.MAX_PROG_SIZE();
+    PROG_EVAL_TIME = config.PROG_EVAL_TIME();
+    MUT_PER_BIT_FLIP = config.MUT_PER_BIT_FLIP();
+    MUT_PER_INST_SUB = config.MUT_PER_INST_SUB();
+    MUT_PER_INST_INS = config.MUT_PER_INST_INS();
+    MUT_PER_INST_DEL = config.MUT_PER_INST_DEL();
+    MUT_PER_PROG_SLIP = config.MUT_PER_PROG_SLIP();
+    MUT_PER_MOD_DUP = config.MUT_PER_MOD_DUP();
+    MUT_PER_MOD_DEL = config.MUT_PER_MOD_DEL();
+    // Hardware
+    MIN_TAG_SPECIFICITY = config.MIN_TAG_SPECIFICITY();
+    MAX_CALL_DEPTH = config.MAX_CALL_DEPTH();
+    // Problem
+    PROBLEM_ID = config.PROBLEM_ID();
+    TRAINING_SET_FILENAME = config.TRAINING_SET_FILENAME();
+    TEST_SET_FILENAME = config.TEST_SET_FILENAME();
+    // Cohort Lexicase
+    PROG_COHORT_SIZE = config.PROG_COHORT_SIZE();
+    TEST_COHORT_SIZE = config.TEST_COHORT_SIZE();
+    COHORT_MAX_FUNCS = config.COHORT_MAX_FUNCS();
+    // Standard Lexicase
+    LEXICASE_MAX_FUNCS = config.LEXICASE_MAX_FUNCS();
+    NUM_TESTS = config.NUM_TESTS();
+    // Downsampled Lexicase
+    DOWNSAMPLED_MAX_FUNCS = config.DOWNSAMPLED_MAX_FUNCS();
+    DOWNSAMPLED_NUM_TESTS = config.DOWNSAMPLED_NUM_TESTS();
+    // Data Collection
+    OUTPUT_DIR = config.OUTPUT_DIR();
+    SNAPSHOT_INTERVAL = config.SNAPSHOT_INTERVAL();
+    SUMMARY_STATS_INTERVAL = config.SUMMARY_STATS_INTERVAL();
+    SOLUTION_SCREEN_INTERVAL = config.SOLUTION_SCREEN_INTERVAL();
+}
+
 void Experiment::SetupHardware(){
     // Create new instruction library.
     inst_lib = emp::NewPtr<inst_lib_t>();
@@ -280,6 +327,7 @@ void Experiment::SetupEvaluation(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
             std::cout << "Setting up REDUCED Lexicase evaluation" << std::endl;
+            // Create id arrays to randomize training cases (only one time)
             program_ids.resize(POP_SIZE);
             for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
                 program_ids[prog_id] = prog_id;
@@ -288,15 +336,17 @@ void Experiment::SetupEvaluation(){
             for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
                 test_case_ids[test_id] = test_id;
             }
-            // Shuffle ONCE
+            // Shuffle ONCE to simulate taking a random subset at the beginning
             emp::Shuffle(*randPtr, program_ids);
             emp::Shuffle(*randPtr, test_case_ids);
+            // To be a potential solution, a program must solve the given number of training cases
             max_passes = NUM_TESTS;
             break;
         }
         case COHORT_LEXICASE: {
             std::cout << "Setting up COHORT Lexicase evaluation" << std::endl;
-            if(POP_SIZE % PROG_COHORT_SIZE != 0){
+            // Verify the parameters make sense
+             if(POP_SIZE % PROG_COHORT_SIZE != 0){
                 std::cout << "Program population size must be evenly divisible by"
                     " the cohort size!" << std::endl;
                 exit(-1);
@@ -305,7 +355,8 @@ void Experiment::SetupEvaluation(){
                 std::cout <<  "Number of training cases must be evenly divisible by"
                     " the cohort size!" << std::endl;
                 exit(-1);
-            }
+            }   
+            // Calculate the number of cohorts for both programs and test, they should match
             num_cohorts = POP_SIZE / PROG_COHORT_SIZE;
             std::cout << "Number of cohorts: " << num_cohorts << std::endl;
             if(num_training_cases / TEST_COHORT_SIZE != num_cohorts){ 
@@ -313,6 +364,7 @@ void Experiment::SetupEvaluation(){
                     " of test cohorts" << std::endl;
                 exit(-1); 
             }
+            // Create id lists to use as cohorts
             program_ids.resize(POP_SIZE);
             for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
                 program_ids[prog_id] = prog_id;
@@ -321,11 +373,13 @@ void Experiment::SetupEvaluation(){
             for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
                 test_case_ids[test_id] = test_id;
             }
+            // For a program to be a potential solution, it must solve all tests in its cohort
             max_passes = TEST_COHORT_SIZE;
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
             std::cout << "Setting up DOWNSAMPLED Lexicase evaluation" << std::endl;
+            //Create id arrays that will be shuffled per update to give us random execution ordering
             program_ids.resize(POP_SIZE);
             for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
                 program_ids[prog_id] = prog_id;
@@ -334,7 +388,8 @@ void Experiment::SetupEvaluation(){
             for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
                 test_case_ids[test_id] = test_id;
             }
-            max_passes = TEST_COHORT_SIZE;
+            // Program is potentially done when it solves all the tests of the current update
+            max_passes = DOWNSAMPLED_NUM_TESTS;
             break;
         }
         default: {
@@ -372,7 +427,7 @@ void Experiment::SetupSelection(){
         }
         case DOWNSAMPLED_LEXICASE: {
             std::cout << "Setting up DOWNSAMPLED Lexicase selection" << std::endl;
-            for(size_t local_test_id = 0; local_test_id < TEST_COHORT_SIZE; ++local_test_id){
+            for(size_t local_test_id = 0; local_test_id < DOWNSAMPLED_NUM_TESTS; ++local_test_id){
                 lexicase_fit_funcs.push_back(
                     [local_test_id](org_t& org){
                         return org.GetLocalScore(local_test_id);
@@ -399,6 +454,7 @@ void Experiment::SetupMutation(){
     mutator.PER_PROG_SLIP = MUT_PER_PROG_SLIP;
     mutator.PER_MOD_DUP = MUT_PER_MOD_DUP;
     mutator.PER_MOD_DEL = MUT_PER_MOD_DEL;
+    // Assign the world to use the mutator
     world->SetMutFun([this](org_t& org, emp::Random& rnd){
         return mutator.Mutate(rnd, org.GetGenome());
     });
@@ -419,7 +475,7 @@ void Experiment::SetupDataCollection(){
         else if(treatment_type == COHORT_LEXICASE)
             return (double)(world->GetUpdate() * PROG_COHORT_SIZE * TEST_COHORT_SIZE * num_cohorts); 
         else if(treatment_type == DOWNSAMPLED_LEXICASE)
-            return (double)(world->GetUpdate() * POP_SIZE * TEST_COHORT_SIZE);
+            return (double)(world->GetUpdate() * POP_SIZE * DOWNSAMPLED_NUM_TESTS);
         else
             return 0.0;
     };
@@ -469,7 +525,7 @@ void Experiment::SetupDataCollectionFunctions(){
         for (size_t test_id = 0; test_id < max_passes; ++test_id) {
             if (test_id) 
                 scores += ",";
-            scores += emp::to_string(org.GetRawScore(test_id));
+            scores += emp::to_string(org.GetRawLocalScore(test_id));
         }
         scores += "]\"";
         return scores;
@@ -507,13 +563,19 @@ void Experiment::SetupDataCollectionFunctions(){
     }; 
 }
 
+void Experiment::InitializePopulation(){
+    for(size_t i = 0; i < POP_SIZE; ++i)
+        world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
+            MAX_PROG_SIZE), 1);      
+}
+
 void Experiment::Run(){
     if(!setup_done){
         std::cout << "Error! You must call Setup() before calling run on your experiment!" 
             << std::endl;
         exit(-1);
     }
-    for(cur_update = 0; cur_update < GENERATIONS; ++cur_update){
+    for(cur_update = 0; cur_update <= GENERATIONS; ++cur_update){
         Step();
     }    
     std::cout << "Experiment finished!" << std::endl;
@@ -525,51 +587,6 @@ void Experiment::Step(){
     Update();
 }
 
-void Experiment::CopyConfig(const ExperimentConfig& config){
-    // General 
-    SEED = config.SEED(); 
-    TREATMENT = config.TREATMENT(); 
-    POP_SIZE = config.POP_SIZE(); 
-    GENERATIONS = config.GENERATIONS(); 
-    DILUTION_PCT = config.DILUTION_PCT();
-    // Program
-    MIN_PROG_SIZE = config.MIN_PROG_SIZE();
-    MAX_PROG_SIZE = config.MAX_PROG_SIZE();
-    PROG_EVAL_TIME = config.PROG_EVAL_TIME();
-    MUT_PER_BIT_FLIP = config.MUT_PER_BIT_FLIP();
-    MUT_PER_INST_SUB = config.MUT_PER_INST_SUB();
-    MUT_PER_INST_INS = config.MUT_PER_INST_INS();
-    MUT_PER_INST_DEL = config.MUT_PER_INST_DEL();
-    MUT_PER_PROG_SLIP = config.MUT_PER_PROG_SLIP();
-    MUT_PER_MOD_DUP = config.MUT_PER_PROG_SLIP();
-    MUT_PER_MOD_DEL = config.MUT_PER_MOD_DEL();
-    // Hardware
-    MIN_TAG_SPECIFICITY = config.MIN_TAG_SPECIFICITY();
-    MAX_CALL_DEPTH = config.MAX_CALL_DEPTH();
-    // Problem
-    PROBLEM_ID = config.PROBLEM_ID();
-    TRAINING_SET_FILENAME = config.TRAINING_SET_FILENAME();
-    TEST_SET_FILENAME = config.TEST_SET_FILENAME();
-    // Cohort Lexicase
-    PROG_COHORT_SIZE = config.PROG_COHORT_SIZE();
-    TEST_COHORT_SIZE = config.TEST_COHORT_SIZE();
-    COHORT_MAX_FUNCS = config.COHORT_MAX_FUNCS();
-    // Standard Lexicase
-    LEXICASE_MAX_FUNCS = config.LEXICASE_MAX_FUNCS();
-    NUM_TESTS = config.NUM_TESTS();
-    // Data Collection
-    OUTPUT_DIR = config.OUTPUT_DIR();
-    SNAPSHOT_INTERVAL = config.SNAPSHOT_INTERVAL();
-    SUMMARY_STATS_INTERVAL = config.SUMMARY_STATS_INTERVAL();
-    SOLUTION_SCREEN_INTERVAL = config.SOLUTION_SCREEN_INTERVAL();
-}
-
-void Experiment::InitializePopulation(){
-    for(size_t i = 0; i < POP_SIZE; ++i)
-        world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
-            MAX_PROG_SIZE), 1);      
-}
-
 void Experiment::Evaluate(){
     //Remember to reset hardware and load each program
     switch(treatment_type){
@@ -579,19 +596,19 @@ void Experiment::Evaluate(){
             
             // Handle one program at a time
             for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
-                org_t & cur_prog = world->GetOrg(program_ids[prog_id]);
+                org_t & cur_prog = world->GetOrg(prog_id);
                 cur_prog.Reset(num_training_cases, NUM_TESTS);
                 // Test against first NUM_TESTS test cases
                 for(size_t test_id = 0; test_id < NUM_TESTS; ++test_id){
                     // Do test
                     SetupSingleTest(cur_prog, test_case_ids[test_id]);
-                    RunSingleTest(cur_prog, test_case_ids[test_id]); 
+                    RunSingleTest(cur_prog, test_case_ids[test_id], test_id); 
                 } 
             }
             break;
         }
         case COHORT_LEXICASE: {
-            // Shuffle order for cohorts
+            // Shuffle order for both cohorts
             emp::Shuffle(*randPtr, program_ids);
             emp::Shuffle(*randPtr, test_case_ids);
             // Handle one cohort at a time
@@ -606,7 +623,7 @@ void Experiment::Evaluate(){
                         size_t test_id = cohort_id * TEST_COHORT_SIZE + test_id_off; 
                         // Do test
                         SetupSingleTest(cur_prog, test_case_ids[test_id]);
-                        RunSingleTest(cur_prog, test_case_ids[test_id]); 
+                        RunSingleTest(cur_prog, test_case_ids[test_id], test_id_off); 
                     } 
                 }
             }
@@ -614,17 +631,16 @@ void Experiment::Evaluate(){
         }
         case DOWNSAMPLED_LEXICASE: {
             // Shuffle order of test cases so we get fresh ones each update
-            emp::Shuffle(*randPtr, program_ids);
             emp::Shuffle(*randPtr, test_case_ids);
             // Handle one program at a time
             for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
-                org_t & cur_prog = world->GetOrg(program_ids[prog_id]);
-                cur_prog.Reset(num_training_cases, TEST_COHORT_SIZE);
+                org_t & cur_prog = world->GetOrg(prog_id);
+                cur_prog.Reset(num_training_cases, DOWNSAMPLED_NUM_TESTS);
                 // Test against first NUM_TESTS test cases
-                for(size_t test_id = 0; test_id < NUM_TESTS; ++test_id){
+                for(size_t test_id = 0; test_id < DOWNSAMPLED_NUM_TESTS; ++test_id){
                     // Do test
                     SetupSingleTest(cur_prog, test_case_ids[test_id]);
-                    RunSingleTest(cur_prog, test_case_ids[test_id]); 
+                    RunSingleTest(cur_prog, test_case_ids[test_id], test_id); 
                 } 
             }
             break;
@@ -636,8 +652,7 @@ void Experiment::Evaluate(){
     }
 }
 
-
-//TODO: Figure out the crazy voodoo magic
+//TODO: Figure out the crazy assembler error
 void Experiment::Select(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
@@ -672,7 +687,7 @@ void Experiment::Select(){
             emp::LexicaseSelectWORKAROUND(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
-                                LEXICASE_MAX_FUNCS);
+                                DOWNSAMPLED_MAX_FUNCS);
             break;
         }
         default: {
@@ -693,18 +708,21 @@ void Experiment::UpdateRecords(){
             cur_best_prog_id = prog_id;
         }
         // Test potential solutions
-        if(pass_total == max_passes){
-            if(TestValidation(cur_org)){
+        if(pass_total == max_passes && cur_org.GetGenome().GetSize() < smallest_solution_size){
+            stats_focus_org_id = prog_id;
+            RunAllValidations(cur_org);
+            if(validation_passes == num_test_cases){
                 if(!solution_found){
                     update_first_solution_found = cur_update;
                 }
                 solution_found = true;
-                //TODO: Save solution 
+                smallest_solution_size = cur_org.GetGenome().GetSize();
+                solution_file->Update();
             }
         } 
     }
     if(cur_update % SNAPSHOT_INTERVAL == 0 || update_first_solution_found == cur_update || 
-            cur_update >= GENERATIONS -1){
+            cur_update >= GENERATIONS){
         SavePopSnapshot();
     } 
 }
@@ -755,6 +773,7 @@ void Experiment::SavePopSnapshot(){
 }
 
 //TODO: All the record keeping/tracking
+//TODO: record all solutions
 void Experiment::Update(){
     UpdateRecords();
     std::cout << "Update: " << cur_update << "; ";

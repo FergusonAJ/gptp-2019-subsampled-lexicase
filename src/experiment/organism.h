@@ -78,12 +78,21 @@ public:
             std::cout << "Error! Tried to assign score for local test case #" << local_test_id;
             std::cout << " while organism's local vector has length" << local_status_vec.size();
             std::cout << std::endl;
+            exit(-1);
         }
+        if(pass){ 
+            if(submitted)
+                local_status_vec[local_test_id] = TestStatus::PASS;
+            else
+                local_status_vec[local_test_id] = TestStatus::AUTO_PASS;
+        }
+        else
+            local_status_vec[local_test_id] = TestStatus::FAIL;
     }
 
     double GetLocalScore(size_t local_test_id){
         emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
-        double res = local_status_vec[local_test_id] == TestStatus::PASS;
+        double res = (local_status_vec[local_test_id] == TestStatus::PASS);
         return res;
     }
     
@@ -97,6 +106,11 @@ public:
     size_t GetRawScore(size_t test_id){
         emp_assert(test_id < status_vec.size(), "Trying to get invalid score!");
         return (size_t)status_vec[test_id];
+    }
+    //Also shows if its unseen   
+    size_t GetRawLocalScore(size_t local_test_id){
+        emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
+        return (size_t)local_status_vec[local_test_id];
     }
  
     size_t GetNumPasses(){

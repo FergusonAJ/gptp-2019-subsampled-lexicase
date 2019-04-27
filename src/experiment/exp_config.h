@@ -7,8 +7,8 @@
 EMP_BUILD_CONFIG(ExperimentConfig,
     // General Group 
     GROUP(GENERAL, "General settings"), 
-    VALUE(SEED, int, 0, "Random number seed (-1 to use current time)"),
-    VALUE(TREATMENT, size_t, 0, "0 for Reduced Lexicase, 1 for Cohort Lexicase,"
+    VALUE(SEED, int, 909, "Random number seed (-1 to use current time)"),
+    VALUE(TREATMENT, size_t, 1, "0 for Reduced Lexicase, 1 for Cohort Lexicase,"
         " 2 for Downsampled Lexicase"),
     VALUE(POP_SIZE, size_t, 1000, "The size of our evolving population"),
     VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
@@ -58,6 +58,13 @@ EMP_BUILD_CONFIG(ExperimentConfig,
         "remaining organism. (0 for no limit, i.e., use as many cases as needed.)"),
     VALUE(NUM_TESTS, size_t, 0, "The number of the training test cases to actually use (0 for all)"),
    
+    // Downsampled Lexicase Group
+    GROUP(DOWNSAMPLED_LEXICASE_GROUP, "Settings specific to experiments using downsampled lexicase "
+        "(See TREATMENT)"),
+    VALUE(DOWNSAMPLED_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking random " 
+        "remaining organism. (0 for no limit, i.e., use as many cases as needed.)"),
+    VALUE(DOWNSAMPLED_NUM_TESTS, size_t, 10, "The number of the training cases to use each update"),
+    
     // Data Collection Group 
     GROUP(DATA_COLLECTION_GROUP, "Settings specific to data collection."),
     VALUE(OUTPUT_DIR, std::string, "./output/", "Specifies the directory where output files will"
