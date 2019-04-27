@@ -114,7 +114,6 @@ protected:
     size_t cur_gen;
     size_t num_training_cases;
     size_t num_test_cases;
-    size_t cur_best_prog_id;
     size_t cur_update;
     
     // Cohort Lexicase variables
@@ -139,6 +138,9 @@ protected:
     bool solution_found;
     size_t update_first_solution_found;
     size_t current_best_prog_id;
+    double current_best_score;
+    size_t actual_current_best_prog_id;
+    double actual_current_best_score;
     size_t stats_focus_org_id;
     emp::vector<TestResult> validation_results;
     size_t validation_passes;
@@ -199,7 +201,7 @@ Experiment::Experiment(): setup_done(false), cur_update(0), solution_found(false
 
 }
 
-//TODO: Delete phylo ptr if implemented
+//TODO: Delete phylo ptr after implementing phylo tracking
 Experiment::~Experiment(){
     std::cout << "Cleaning up experiment..." << std::endl;
     if(setup_done){
@@ -229,6 +231,7 @@ void Experiment::Setup(const ExperimentConfig& config){
     solution_found = false;
     update_first_solution_found = GENERATIONS + 1;
     current_best_prog_id = 0;
+    actual_current_best_prog_id = 0;
 
 
     // Setup the different pieces of the experiment
@@ -697,19 +700,30 @@ void Experiment::Select(){
     }
 }
 
+//TODO: Add phylo record keeping
 void Experiment::UpdateRecords(){
-    double cur_best_score = 0.0;
+    current_best_score = 0.0;
+    actual_current_best_score = 0.0;
     for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
         emp_assert(world->IsOccupied(prog_id));
         org_t& cur_org = world->GetOrg(prog_id);
         const size_t pass_total = cur_org.GetNumPasses();
-        if(pass_total > cur_best_score){
-            cur_best_score = (double)pass_total;
-            cur_best_prog_id = prog_id;
+        if(pass_total > current_best_score){
+            current_best_score = (double)pass_total;
+            current_best_prog_id = prog_id;
+        }
+        // "Actual" counts give the true values, ignoring the auto-pass flag
+        //      i.e., even tests with the auto-pass flag are computed normally
+        const size_t actual_pass_total = cur_org.GetNumActualPasses();
+        if(actual_pass_total > actual_current_best_score){
+            actual_current_best_score = (double)actual_pass_total;
+            actual_current_best_prog_id = prog_id;
         }
         // Test potential solutions
-        if(pass_total == max_passes && cur_org.GetGenome().GetSize() < smallest_solution_size){
+        if(actual_pass_total == max_passes
+                && cur_org.GetGenome().GetSize() < smallest_solution_size){
             stats_focus_org_id = prog_id;
+            std::cout << "Trying to validate" << prog_id << std::endl;
             RunAllValidations(cur_org);
             if(validation_passes == num_test_cases){
                 if(!solution_found){
@@ -772,12 +786,11 @@ void Experiment::SavePopSnapshot(){
     */
 }
 
-//TODO: All the record keeping/tracking
-//TODO: record all solutions
 void Experiment::Update(){
     UpdateRecords();
     std::cout << "Update: " << cur_update << "; ";
-    std::cout << "Best Score: " << world->CalcFitnessID(current_best_prog_id) << "; ";
+    std::cout << "Best Score: " << current_best_score << "; ";
+    std::cout << "Best Actual Score: " << actual_current_best_score << "; ";
     std::cout << "Solution Found?: " << solution_found << "; ";
     std::cout << std::endl;
     world->Update();

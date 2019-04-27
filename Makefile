@@ -3,7 +3,7 @@ PARSER_DIR := ../../tools/csv-parser
 
 CXX := g++-8 
 
-CFLAGS := -Wall -Wno-unused-function -iquote $(EMP_DIR)/ -iquote $(PARSER_DIR) -std=c++14
+CFLAGS := -Wall -Wno-unused-function -iquote $(EMP_DIR)/ -iquote $(PARSER_DIR) -std=c++17
 
 OFLAGS_optim := -O3 -DNDEBUG
 OFLAGS_debug := -O3 -g -pedantic -DEMP_TRACK_MEM  -Wnon-virtual-dtor -Wcast-align -Woverloaded-virtual
