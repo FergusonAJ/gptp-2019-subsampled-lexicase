@@ -4,6 +4,7 @@ input_filename = './tools/unfinished.csv'
 output_dir = './unfinished/'
 if output_dir[-1] != '/':
     output_dir += '/'
+start_seed = 17000
 
 # Define some helpful index constants
 IDX_ID = 0
@@ -101,4 +102,23 @@ with open('./run_unfinished.sh', 'w') as sbatch_fp:
                         + str(count) \
                         + '.sb\n')
 
-print('Generated', count, 'files + 1 run script!')
+
+with open('clear_dirs.sh', 'w') as dir_fp:
+    dir_fp.write('!# /bin/bash\n')
+    for tup in unfinished:
+        trt = tup[0]
+        size = tup[1]
+        dil = tup[2]
+        task_id = tup[3]
+        dir_fp.write('rm ' \
+                    + base_dir \
+                    + trt.name \
+                    + '/' \
+                    + str(size.num_tests) \
+                    + '/' \
+                    + dil.get_name() \
+                    + '/' \
+                    + str(start_seed + task_id)
+                    + '/* -r' \
+                    + '\n')
+print('Generated', count, 'files + 2 aux scripts!')
