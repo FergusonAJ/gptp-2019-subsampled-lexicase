@@ -5,7 +5,7 @@ sizes = [size_10, size_100]
 dilutions = [dil_0_0, dil_0_5, dil_0_9]
 
 with open('sbatch_run.sh', 'w') as fp:
-    fp.write('#! /bin/bash\n')
+    fp.write('#!/bin/bash\n')
     count = 0
     for trt in treatments:
         for size in sizes:

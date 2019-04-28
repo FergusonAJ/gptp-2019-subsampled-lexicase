@@ -41,3 +41,23 @@ dil_0_5  = DilutionInfo('0.50000')
 dil_0_75 = DilutionInfo('0.75000')
 dil_0_9  = DilutionInfo('0.90000')
 dil_0_95 = DilutionInfo('0.95000')
+
+# Create reverse lookups
+trt_lookup = {}
+trt_lookup['reduced'] = trt_reduced
+trt_lookup['cohort'] = trt_cohort
+trt_lookup['downsampled'] = trt_downsampled
+
+size_lookup = {}
+size_lookup[100] = size_100
+size_lookup[50] = size_50
+size_lookup[25] = size_25
+size_lookup[10] = size_10
+size_lookup[5] = size_5
+
+dil_lookup = {}
+dil_lookup['0_00000'] = dil_0_0
+dil_lookup['0_50000'] = dil_0_5
+dil_lookup['0_75000'] = dil_0_75
+dil_lookup['0_90000'] = dil_0_9
+dil_lookup['0_95000'] = dil_0_95

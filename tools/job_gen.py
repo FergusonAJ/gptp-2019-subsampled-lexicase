@@ -40,7 +40,7 @@ for trt in treatments:
                 fp.write('#!/bin/bash\n')
                 fp.write('########## Define Resources Needed with SBATCH Lines ##########\n')
                 fp.write('\n')
-                fp.write('#SBATCH --time=12:00:00         # limit of wall clock time - how long the job will run (same as -t)\n')
+                fp.write('#SBATCH --time=72:00:00         # limit of wall clock time - how long the job will run (same as -t)\n')
                 fp.write('#SBATCH --array=1-50\n')
                 fp.write('#SBATCH --mem=4G                # memory required per node - amount of memory (in bytes)\n')
                 fp.write('#SBATCH --job-name ls' + trt.initial + str(size.num_tests) + '_' + dil.get_name() +'     # you can give your job a name for easier identification (same as -J)\n')
