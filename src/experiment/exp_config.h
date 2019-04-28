@@ -69,8 +69,8 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     GROUP(DATA_COLLECTION_GROUP, "Settings specific to data collection."),
     VALUE(OUTPUT_DIR, std::string, "./output/", "Specifies the directory where output files will"
         " be saved"),   
-    VALUE(SNAPSHOT_INTERVAL, size_t, 1000, "How often should we take population snapshots?"),
-    VALUE(SUMMARY_STATS_INTERVAL, size_t, 1000, "How often should we output summary stats?"),
+    VALUE(SNAPSHOT_INTERVAL, size_t, 100, "How often should we take population snapshots?"),
+    VALUE(SUMMARY_STATS_INTERVAL, size_t, 100, "How often should we output summary stats?"),
     VALUE(SOLUTION_SCREEN_INTERVAL, size_t, 1000, "How often should we screen entire population " 
         "for solutions?")
 

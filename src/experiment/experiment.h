@@ -58,6 +58,11 @@ public:
         std::function<size_t(void)> get_fitness_eval__num_tests;
         std::function<std::string(void)> get_fitness_eval__passes_by_test;
 
+        // Actual stats (auto-pass has no effect)
+        std::function<size_t(void)> get_fitness_eval__num_actual_passes;
+        std::function<size_t(void)> get_fitness_eval__num_actual_fails;
+        std::function<std::string(void)> get_fitness_eval__actual_passes_by_test;
+        
         // program validation stats
         std::function<size_t(void)> get_validation_eval__num_passes;
         std::function<size_t(void)> get_validation_eval__num_tests;
@@ -515,7 +520,7 @@ void Experiment::SetupDataCollectionFunctions(){
     };
 
     program_stats.get_fitness_eval__num_fails = [this]() { 
-        return world->GetOrg(stats_focus_org_id).GetNumPasses(); 
+        return world->GetOrg(stats_focus_org_id).GetNumFails(); 
     };
 
     program_stats.get_fitness_eval__num_tests = [this]() { 
@@ -529,6 +534,26 @@ void Experiment::SetupDataCollectionFunctions(){
             if (test_id) 
                 scores += ",";
             scores += emp::to_string(org.GetRawLocalScore(test_id));
+        }
+        scores += "]\"";
+        return scores;
+    };
+    
+    program_stats.get_fitness_eval__num_actual_passes = [this]() { 
+        return world->GetOrg(stats_focus_org_id).GetNumActualPasses(); 
+    };
+
+    program_stats.get_fitness_eval__num_actual_fails = [this]() { 
+        return world->GetOrg(stats_focus_org_id).GetNumActualFails(); 
+    };
+
+    program_stats.get_fitness_eval__actual_passes_by_test = [this]() { 
+        org_t & org = world->GetOrg(stats_focus_org_id);
+        std::string scores = "\"[";
+        for (size_t test_id = 0; test_id < max_passes; ++test_id) {
+            if (test_id) 
+                scores += ",";
+            scores += emp::to_string(org.GetActualLocalScore(test_id));
         }
         scores += "]\"";
         return scores;
@@ -723,9 +748,9 @@ void Experiment::UpdateRecords(){
         if(actual_pass_total == max_passes
                 && cur_org.GetGenome().GetSize() < smallest_solution_size){
             stats_focus_org_id = prog_id;
-            std::cout << "Trying to validate" << prog_id << std::endl;
             RunAllValidations(cur_org);
             if(validation_passes == num_test_cases){
+                std::cout << "Dominant solution found!" << std::endl;
                 if(!solution_found){
                     update_first_solution_found = cur_update;
                 }
@@ -758,6 +783,10 @@ void Experiment::SavePopSnapshot(){
     file.AddFun(program_stats.get_fitness_eval__num_fails, "num_fails__fitness_eval");
     file.AddFun(program_stats.get_fitness_eval__num_tests, "num_tests__fitness_eval");
     file.AddFun(program_stats.get_fitness_eval__passes_by_test, "passes_by_test__fitness_eval");
+    
+    file.AddFun(program_stats.get_fitness_eval__num_actual_passes, "num_actual_passes__fitness_eval");
+    file.AddFun(program_stats.get_fitness_eval__num_actual_fails, "num_actual_fails__fitness_eval");
+    file.AddFun(program_stats.get_fitness_eval__actual_passes_by_test, "actual_passes_by_test__fitness_eval");
 
     file.AddFun(program_stats.get_validation_eval__num_passes, "num_passes__validation_eval");
     file.AddFun(program_stats.get_validation_eval__num_tests, "num_tests__validation_eval");

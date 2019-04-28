@@ -147,20 +147,37 @@ void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
 void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
     // Check for auto-pass cases
     if(training_set.GetInput(test_id).second){
-            org.Record(test_id, true, false, local_test_id);
+        // Record the auto pass, still compute "actual" passes
+        org.Record(test_id, true, false, local_test_id);
+        
+        for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
+            hardware->SingleProcess();
+            if(hardware->GetCallStackSize() == 0) 
+                break;
+        }
+        if(submitted){
+            org.RecordActual(submitted_val == training_set.GetOutput(test_id),
+                true, local_test_id);
         }
         else{
-            for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
-                hardware->SingleProcess();
-                if(hardware->GetCallStackSize() == 0) 
-                    break;
-            }
-            if(submitted){
-                org.Record(test_id, submitted_val == training_set.GetOutput(test_id),
-                    true, local_test_id);
-            }
-            else{
-                org.Record(test_id, false, false, local_test_id);
+            org.RecordActual(false, false, local_test_id);
+        }
+    }
+    else{
+        for(size_t eval_time = 0; eval_time < PROG_EVAL_TIME; ++eval_time){
+            hardware->SingleProcess();
+            if(hardware->GetCallStackSize() == 0) 
+                break;
+        }
+        if(submitted){
+            org.Record(test_id, submitted_val == training_set.GetOutput(test_id),
+                true, local_test_id);
+            org.RecordActual(submitted_val == training_set.GetOutput(test_id),
+                true, local_test_id);
+        }
+        else{
+            org.Record(test_id, false, false, local_test_id);
+            org.RecordActual(false, false, local_test_id);
         }
     }
 }

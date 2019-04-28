@@ -134,10 +134,10 @@ public:
         return res;
     }
 
-    double GetActualLocalScore(size_t local_test_id){
+    size_t GetActualLocalScore(size_t local_test_id){
         emp_assert(local_test_id < actual_local_status_vec.size(), "Trying to get invalid "
             "actual local score!");
-        double res = (actual_local_status_vec[local_test_id] == TestStatus::PASS);
+        size_t res = (actual_local_status_vec[local_test_id] == TestStatus::PASS);
         return res;
     }
 
