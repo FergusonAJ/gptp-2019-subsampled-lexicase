@@ -1,4 +1,4 @@
-!# /bin/bash
+#! /bin/bash
 rm /mnt/gs18/scratch/users/fergu358/lexicase/cohort/10/0_00000/17012/* -r
 rm /mnt/gs18/scratch/users/fergu358/lexicase/cohort/10/0_00000/17029/* -r
 rm /mnt/gs18/scratch/users/fergu358/lexicase/cohort/10/0_50000/17003/* -r
