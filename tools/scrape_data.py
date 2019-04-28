@@ -14,13 +14,13 @@ dilutions = [dil_0_0, dil_0_5, dil_0_9]
 
 with open('solution_found.csv', 'w') as fp:
     fp.write('treatment' \
-             + ', ' \
+             + ',' \
              + 'num_tests' \
-             + ', ' \
+             + ',' \
              + 'dilution' \
-             + ', ' \
+             + ',' \
              + 'solution_found' \
-             + ', ' \
+             + ',' \
              + 'filename' \
              + '\n')    
     for trt in treatments:
@@ -42,13 +42,13 @@ with open('solution_found.csv', 'w') as fp:
                             if line.strip() != '':
                                 solution_found = True
                     fp.write(trt.name \
-                             + ', ' \
+                             + ',' \
                              + str(size.num_tests) \
-                             + ', ' \
+                             + ',' \
                              + dil.get_name() \
-                             + ', ' \
+                             + ',' \
                              + str(solution_found) \
-                             + ', ' \
+                             + ',' \
                              + filename \
                              + '\n')
 
