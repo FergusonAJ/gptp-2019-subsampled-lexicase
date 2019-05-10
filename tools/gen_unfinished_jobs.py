@@ -104,7 +104,7 @@ with open('./run_unfinished.sh', 'w') as sbatch_fp:
 
 
 with open('clear_dirs.sh', 'w') as dir_fp:
-    dir_fp.write('!# /bin/bash\n')
+    dir_fp.write('#! /bin/bash\n')
     for tup in unfinished:
         trt = tup[0]
         size = tup[1]
