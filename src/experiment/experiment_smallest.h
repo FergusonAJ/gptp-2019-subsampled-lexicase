@@ -57,6 +57,8 @@ class Experiment_Smallest : public Experiment{
         size_t cur_test_id;
         int submitted_val;
         bool submitted;
+        input_t cur_input;
+        output_t cur_output;
          
         
     public:
@@ -137,12 +139,16 @@ void Experiment_Smallest::SetupDilution(){
 void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
     input_t & input = training_set.GetInput(test_id);
     cur_test_id = test_id;
+    cur_input = input;
+    cur_output = training_set.GetOutput(test_id);
     SetupSingle(org, input);
 }
 
 void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
     input_t & input = test_set.GetInput(test_id);
     cur_test_id = test_id;
+    cur_input = input;
+    cur_output = test_set.GetOutput(test_id);
     SetupSingle(org, input);
 }
 
@@ -309,7 +315,7 @@ void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
     size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
     if (!hw.IsValidMemPos(posA)) return;
 
-    wmem.Set(posA, training_set.GetInput(cur_test_id).first[0]);
+    wmem.Set(posA, cur_input.first[0]);
 }
 
 void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
@@ -320,7 +326,7 @@ void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
     size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
     if (!hw.IsValidMemPos(posA)) return;
 
-    wmem.Set(posA, training_set.GetInput(cur_test_id).first[1]);
+    wmem.Set(posA, cur_input.first[1]);
 }
 
 void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
@@ -331,7 +337,7 @@ void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
     size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
     if (!hw.IsValidMemPos(posA)) return;
 
-    wmem.Set(posA, training_set.GetInput(cur_test_id).first[2]);
+    wmem.Set(posA, cur_input.first[2]);
 }
 
 void Experiment_Smallest::Inst_LoadNum4(hardware_t & hw, const inst_t & inst) {
@@ -342,7 +348,7 @@ void Experiment_Smallest::Inst_LoadNum4(hardware_t & hw, const inst_t & inst) {
     size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
     if (!hw.IsValidMemPos(posA)) return;
 
-    wmem.Set(posA, training_set.GetInput(cur_test_id).first[3]);
+    wmem.Set(posA, cur_input.first[3]);
 }
 
 void Experiment_Smallest::Inst_SubmitNum(hardware_t & hw, const inst_t & inst) {

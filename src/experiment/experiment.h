@@ -595,13 +595,13 @@ void Experiment::SetupDataCollectionFunctions(){
 }
 
 void Experiment::InitializePopulation(){
+    
     for(size_t i = 0; i < POP_SIZE; ++i)
         world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
             MAX_PROG_SIZE), 1);  
     /*
     emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
     hardware_t::Program sol(inst_lib);
-
     
     sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
     sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
@@ -615,9 +615,9 @@ void Experiment::InitializePopulation(){
     sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
     sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
     sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
-    
     world->Inject(sol, POP_SIZE);   
     */
+
     std::cout << "Initial pop size: " << world->GetSize() << std::endl; 
 }
 
