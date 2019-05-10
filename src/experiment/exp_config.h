@@ -14,12 +14,14 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
     VALUE(DILUTION_PCT, double, 0.0, "The percentage of tests that will be auto-pass "
         "(non-discriminatory)"),
+    VALUE(TERMINATE_ON_FOUND, size_t, 0, "If 1, program will terminate as soon as the first "
+        "solution is found."),
     
     // Program Group 
     GROUP(PROGRAM_GROUP, "General settings specific to programs."),
     VALUE(MIN_PROG_SIZE, size_t, 1, "Minimum program size"),
-    VALUE(MAX_PROG_SIZE, size_t, 128, "Maximum program size"),
-    VALUE(PROG_EVAL_TIME, size_t, 256, "How many clock cycles should we give a program"
+    VALUE(MAX_PROG_SIZE, size_t, 64, "Maximum program size"),
+    VALUE(PROG_EVAL_TIME, size_t, 64, "How many clock cycles should we give a program"
         " during a test?"),
     VALUE(MUT_PER_BIT_FLIP, double, 0.001, "Program per-bit flip rate."),
     VALUE(MUT_PER_INST_SUB, double, 0.005, "Program per-instruction substitution mutation rate."),

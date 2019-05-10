@@ -43,8 +43,8 @@ public:
 
     enum TreatmentType{
         REDUCED_LEXICASE = 0,
-        COHORT_LEXICASE, 
-        DOWNSAMPLED_LEXICASE
+        COHORT_LEXICASE = 1, 
+        DOWNSAMPLED_LEXICASE = 2
     };
     struct ProgramStats{
         // Generic stuff
@@ -161,6 +161,7 @@ protected:
     size_t POP_SIZE;
     size_t GENERATIONS;
     double DILUTION_PCT;
+    size_t TERMINATE_ON_FOUND;
     // Program
     size_t MIN_PROG_SIZE;
     size_t MAX_PROG_SIZE;
@@ -231,7 +232,7 @@ void Experiment::Setup(const ExperimentConfig& config){
     world = emp::NewPtr<world_t>(*randPtr);
     world->SetPopStruct_Mixed(true);
 
-    // Update record keeping vars
+
     smallest_solution_size = MAX_PROG_SIZE + 1;
     solution_found = false;
     update_first_solution_found = GENERATIONS + 1;
@@ -277,6 +278,7 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     POP_SIZE = config.POP_SIZE(); 
     GENERATIONS = config.GENERATIONS(); 
     DILUTION_PCT = config.DILUTION_PCT();
+    TERMINATE_ON_FOUND = config.TERMINATE_ON_FOUND();
     // Program
     MIN_PROG_SIZE = config.MIN_PROG_SIZE();
     MAX_PROG_SIZE = config.MAX_PROG_SIZE();
@@ -569,14 +571,15 @@ void Experiment::SetupDataCollectionFunctions(){
     };
 
     program_stats.get_validation_eval__passes_by_test = [this]() {
-        std::string scores = "\"[";
+        std::ostringstream oss;
+        oss << "\"[";
         for (size_t test_id = 0; test_id < num_test_cases; ++test_id) {
             if (test_id) 
-                scores += ",";
-            scores += emp::to_string((size_t)validation_results[test_id].passed);
+                oss << ",";
+            oss << emp::to_string((size_t)validation_results[test_id].passed);
         }
-        scores += "]\"";
-        return scores; 
+        oss << "]\"";
+        return oss.str(); 
     };
 
     // Misc.
@@ -594,7 +597,28 @@ void Experiment::SetupDataCollectionFunctions(){
 void Experiment::InitializePopulation(){
     for(size_t i = 0; i < POP_SIZE; ++i)
         world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
-            MAX_PROG_SIZE), 1);      
+            MAX_PROG_SIZE), 1);  
+    /*
+    emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
+    hardware_t::Program sol(inst_lib);
+
+    
+    sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
+    sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
+    sol.PushInst("LoadNum3",    {matrix[2], matrix[7], matrix[7]});
+    sol.PushInst("LoadNum4",    {matrix[3], matrix[7], matrix[7]});
+    sol.PushInst("MakeVector",  {matrix[0], matrix[3], matrix[4]});
+    sol.PushInst("Foreach",     {matrix[5], matrix[4], matrix[7]});
+    sol.PushInst("TestNumLess", {matrix[5], matrix[0], matrix[6]});
+    sol.PushInst("If",          {matrix[6], matrix[7], matrix[7]});
+    sol.PushInst("CopyMem",     {matrix[5], matrix[0], matrix[7]});
+    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
+    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
+    sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
+    
+    world->Inject(sol, POP_SIZE);   
+    */
+    std::cout << "Initial pop size: " << world->GetSize() << std::endl; 
 }
 
 void Experiment::Run(){
@@ -747,15 +771,15 @@ void Experiment::UpdateRecords(){
         // Test potential solutions
         if(actual_pass_total == max_passes
                 && cur_org.GetGenome().GetSize() < smallest_solution_size){
-            stats_focus_org_id = prog_id;
-            RunAllValidations(cur_org);
-            if(validation_passes == num_test_cases){
-                std::cout << "Dominant solution found!" << std::endl;
+            if(TestValidation(cur_org)){
+                std::cout << "Dominant solution found! ID: " << prog_id << std::endl;
                 if(!solution_found){
                     update_first_solution_found = cur_update;
                 }
                 solution_found = true;
                 smallest_solution_size = cur_org.GetGenome().GetSize();
+                stats_focus_org_id = prog_id;
+                RunAllValidations(cur_org);
                 solution_file->Update();
             }
         } 
@@ -764,6 +788,11 @@ void Experiment::UpdateRecords(){
             cur_update >= GENERATIONS){
         SavePopSnapshot();
     } 
+    if(update_first_solution_found == cur_update && TERMINATE_ON_FOUND){
+        std::cout << "Solution found, terminating!" << std::endl;
+        std::cout << "To disable, set TERMINATE_ON_FOUND to 0 in config!" << std::endl;
+        exit(0);
+    }
 }
 
 void Experiment::SavePopSnapshot(){
@@ -800,8 +829,8 @@ void Experiment::SavePopSnapshot(){
     // For each program in the population, dump the program and anything we want to know about it.
     for (stats_focus_org_id = 0; stats_focus_org_id < world->GetSize(); ++stats_focus_org_id) {
         if (!world->IsOccupied(stats_focus_org_id)) continue;
-            //Do Validation check 
-            RunAllValidations(world->GetOrg(stats_focus_org_id));
+        //Do Validation check 
+        RunAllValidations(world->GetOrg(stats_focus_org_id));
         // Update snapshot file
         file.Update();
     }

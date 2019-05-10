@@ -123,7 +123,12 @@ public:
         emp_assert(testID < test_cases.size());
         return out == GetOutput(testID);
     }
-
+    
+    void Append(const TestCaseSet < INPUT_TYPE, OUTPUT_TYPE>& src){
+        for(size_t id = 0; id < src.GetSize(); ++id){
+            test_cases.emplace_back(src[id]);
+        }
+    }
 };
 
 #endif
