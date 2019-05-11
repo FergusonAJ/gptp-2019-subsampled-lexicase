@@ -409,7 +409,6 @@ void Experiment::SetupEvaluation(){
     }
 }
 
-//TODO: Add selection pressure for smaller program size? (For each treatment)
 void Experiment::SetupSelection(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
@@ -725,6 +724,7 @@ void Experiment::Select(){
                                                 cur_cohort,
                                                 PROG_COHORT_SIZE,
                                                 COHORT_MAX_FUNCS);
+                // This version throws an assembler error!
                 /*
                 emp::CohortLexicaseSelect_NAIVE(*world,
                                                 lexicase_fit_funcs,
