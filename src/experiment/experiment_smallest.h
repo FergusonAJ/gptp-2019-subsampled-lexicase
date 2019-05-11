@@ -193,6 +193,8 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local
 Experiment::TestResult Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
     // Check for auto-pass cases
     if(test_set.GetInput(test_id).second){
+        std::cout << "Error! We should not have a validation case that is auto-pass!" << std::endl;
+        exit(-1);
         return TestResult(true, false);
     }
     else{
@@ -202,6 +204,20 @@ Experiment::TestResult Experiment_Smallest::RunSingleValidation(org_t& org, size
                 break;
         }
         if(submitted){
+            /*
+            if(org.GetNumActualPasses() == org.GetLocalSize() && submitted_val != test_set.GetOutput(test_id)){
+                input_t input = test_set.GetInput(test_id);
+                std::cout << "Failed a validation case we *should* have passed: " << std::endl;
+                std::cout << "Input: <";
+                std::cout <<  input.first[0] << ", ";
+                std::cout <<  input.first[1] << ", ";
+                std::cout <<  input.first[2] << ", ";
+                std::cout <<  input.first[3] << ">" << std::endl;
+                std::cout << "Expected output: " << test_set.GetOutput(test_id) << std::endl;
+                std::cout << "Actual output: " << submitted_val << std::endl;
+                exit(0);
+            }
+            */
             return TestResult(submitted_val == test_set.GetOutput(test_id), true);
         }
         else{
