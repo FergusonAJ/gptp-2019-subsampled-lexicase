@@ -15,6 +15,7 @@
 #include "tools/Random.h"
 #include "tools/random_utils.h"
 #include "tools/BitSet.h"
+#include "tools/stats.h"
 #include "Evolve/World.h"
 #include "Evolve/World_select.h"
 
@@ -22,8 +23,8 @@
 #include "../gp/TagLinearGP.h"
 #include "../gp/TagLinearGP_InstLib.h"
 #include "../gp/TagLinearGP_Utilities.h"
-    #include "../gp/Mutators.h"
-    #include "./organism.h"
+#include "../gp/Mutators.h"
+#include "./organism.h"
 #include "./Selection.h"
 
 constexpr size_t TAG_WIDTH = 16;
@@ -34,6 +35,7 @@ public:
     //Handy aliases
     using org_t = Organism<TAG_WIDTH>;
     using org_gen_t = Organism<TAG_WIDTH>::genome_t;
+    using org_taxon_t = typename emp::Taxon<org_gen_t>;
     
     using world_t = emp::World<org_t>;
     
@@ -97,14 +99,18 @@ protected:
     void UpdateRecords();
     void SavePopSnapshot();
     void Update();
-    bool TestValidation(org_t& org);
-    void RunAllValidations(org_t& org);
+    bool TestValidation(size_t org_id, org_t& org);
+    void RunAllValidations(size_t org_id, org_t& org);
     void AddDefaultInstructions(const std::unordered_set<std::string> & includes);
 
     // To be defined per problem
+    
+    // Do necessary setup for the given problem (e.g., load test cases)
     virtual void SetupProblem() = 0;
     // Make some tests non-discrimnatory
     virtual void SetupDilution() = 0;
+    // Need to setup a couple diversity functions
+    virtual void SetupProblemDataCollectionFunctions() = 0;
     // Initialize the problem and test case. 
     virtual void SetupSingleTest(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified test case 
@@ -112,7 +118,11 @@ protected:
     // Initialize the problem and validation case. 
     virtual void SetupSingleValidation(org_t& org, size_t test_id) = 0;
     // Run the given program on the specified validation case 
-    virtual TestResult RunSingleValidation(org_t& org, size_t test_id) = 0;
+    virtual TestResult RunSingleValidation(size_t org_id, org_t& org, size_t test_id) = 0;
+    // Reset all tracking variables prior to validation testing
+    virtual void ResetValidation() = 0;
+    // Get a handwritten solution for the given problem
+    virtual hardware_t::Program GetKnownSolution() = 0;
 
     // Bookkeeping variables
     bool setup_done = false;
@@ -153,6 +163,9 @@ protected:
     size_t validation_submissions;
     emp::Ptr<emp::DataFile> solution_file;
     emp::Ptr<emp::DataFile> phen_diversity_file;
+    emp::Ptr<emp::Systematics<org_t, org_gen_t>> org_genotypic_systematics;
+    emp::Ptr<org_taxon_t> mrca_taxa_ptr;
+    size_t mrca_changes;
 
     // Configurable parameters read in from .cfg file
     // General
@@ -195,6 +208,8 @@ protected:
     size_t SNAPSHOT_INTERVAL;
     size_t SUMMARY_STATS_INTERVAL;
     size_t SOLUTION_SCREEN_INTERVAL;
+    // Debugging
+    size_t HARDWIRE_SOLUTION;
 
 public: 
     Experiment();
@@ -207,11 +222,11 @@ Experiment::Experiment(): setup_done(false), cur_update(0), solution_found(false
 
 }
 
-//TODO: Delete phylo ptr after implementing phylo tracking
 Experiment::~Experiment(){
     std::cout << "Cleaning up experiment..." << std::endl;
     if(setup_done){
         solution_file.Delete();
+        phen_diversity_file.Delete();
         hardware.Delete();
         inst_lib.Delete();
         world.Delete();
@@ -238,7 +253,8 @@ void Experiment::Setup(const ExperimentConfig& config){
     update_first_solution_found = GENERATIONS + 1;
     current_best_prog_id = 0;
     actual_current_best_prog_id = 0;
-
+    mrca_taxa_ptr = nullptr;
+    mrca_changes = 0;
 
     // Setup the different pieces of the experiment
     SetupHardware();
@@ -268,6 +284,7 @@ void Experiment::Setup(const ExperimentConfig& config){
  
     InitializePopulation();
     world->SetAutoMutate();
+    ResetValidation();
     setup_done = true;
 }
     
@@ -312,6 +329,8 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     SNAPSHOT_INTERVAL = config.SNAPSHOT_INTERVAL();
     SUMMARY_STATS_INTERVAL = config.SUMMARY_STATS_INTERVAL();
     SOLUTION_SCREEN_INTERVAL = config.SOLUTION_SCREEN_INTERVAL();
+    // Debugging
+    HARDWIRE_SOLUTION = config.HARDWIRE_SOLUTION();
 }
 
 void Experiment::SetupHardware(){
@@ -498,6 +517,112 @@ void Experiment::SetupDataCollection(){
     solution_file->PrintHeaderKeys();
     // Setup generic fitness tracking
     world->SetupFitnessFile(OUTPUT_DIR + "/fitness.csv").SetTimingRepeat(1);
+
+    // Setup phenotypic diversity tracking file
+    phen_diversity_file = emp::NewPtr<emp::DataFile>(OUTPUT_DIR + "/phenotypic_diversity.csv");
+    phen_diversity_file->AddFun(get_update, "update");
+    phen_diversity_file->AddFun(get_evaluations, "evaluations");
+    // Behavioral Diversity
+    phen_diversity_file->AddFun(program_stats.get_prog_behavioral_diversity, "behavioral_diversity",
+        "Shannon entropy of program behaviors");
+    // Unique behavioral phenotypes
+    phen_diversity_file->AddFun(program_stats.get_prog_unique_behavioral_phenotypes, 
+        "unique_behavioral_phenotypes", "Unique behavioral profiles in program population");
+    phen_diversity_file->PrintHeaderKeys();
+   
+    //TODO: Setup systematics tracking
+    // Setup program systematics
+    /*
+    org_genotypic_systematics = 
+        emp::NewPtr<emp::Systematics<org_t, org_gen_t>>([](const org_t & o) { 
+            return o.GetGenome(); 
+        });
+    org_genotypic_systematics->AddEvolutionaryDistinctivenessDataNode();
+    org_genotypic_systematics->AddPairwiseDistanceDataNode();
+    org_genotypic_systematics->AddPhylogeneticDiversityDataNode();
+    world->AddSystematics(org_genotypic_systematics, "org_genotype");
+    auto & org_gen_sys_file = world->SetupSystematicsFile("org_genotype", 
+        OUTPUT_DIR + "/org_gen_sys.csv", false);
+    org_gen_sys_file.SetTimingRepeat(SUMMARY_STATS_INTERVAL);
+    // Default systematics functions:
+    // - GetNumActive (taxa)
+    // - GetTotalOrgs (total orgs tracked)
+    // - GetAveDepth (average phylo depth of organisms)
+    // - GetNumRoots
+    // - GetMRCADepth
+    // - CalcDiversity (entropy of taxa in population)
+    // Functions to add:
+    org_gen_sys_file.template AddFun<size_t>(
+        [this]() { 
+            return mrca_changes; 
+        }, 
+        "mrca_changes", "MRCA changes");
+    org_gen_sys_file.AddStats(
+        *(org_genotypic_systematics->GetDataNode("evolutionary_distinctiveness")), 
+        "evolutionary_distinctiveness", 
+        "evolutionary distinctiveness for a single update", 
+        true, true);
+    org_gen_sys_file.AddStats(
+        *org_genotypic_systematics->GetDataNode("pairwise_distances"), 
+        "pairwise_distance", 
+        "pairwise distance for a single update", 
+        true, true);
+    // - GetPhylogeneticDiversity
+    org_gen_sys_file.AddCurrent(
+        *org_genotypic_systematics->GetDataNode("phylogenetic_diversity"), 
+        "current_phylogenetic_diversity", 
+        "current phylogenetic_diversity", 
+        true, true);
+    // - GetTreeSize
+    org_gen_sys_file.template AddFun<size_t>(
+        [this]() { 
+            return org_genotypic_systematics->GetTreeSize(); 
+        }, 
+        "tree_size", 
+        "Phylogenetic tree size");
+    // - NumSparseTaxa
+    org_gen_sys_file.template AddFun<size_t>(
+        [this]() { 
+            return org_genotypic_systematics->GetNumSparseTaxa(); 
+        }, 
+        "num_sparse_taxa", 
+        "Number sparse taxa");
+    // - mean_sparse_pairwise_distances
+    org_gen_sys_file.template AddFun<size_t>(
+        [this]() { 
+            return org_genotypic_systematics->GetMeanPairwiseDistance(true); 
+        }, 
+        "mean_sparse_pairwise_distances", 
+        "Number sparse taxa");
+    // - sum_sparse_pairwise_distances
+    org_gen_sys_file.template AddFun<size_t>(
+        [this]() { 
+            return org_genotypic_systematics->GetSumPairwiseDistance(true); 
+        }, 
+        "sum_sparse_pairwise_distances", 
+        "Number sparse taxa");
+    // - variance_sparse_pairwise_distances
+    org_gen_sys_file.template AddFun<size_t>(
+        [this]() { 
+            return org_genotypic_systematics->GetVariancePairwiseDistance(true); 
+        }, 
+        "variance_sparse_pairwise_distances", 
+        "Number sparse taxa");
+
+    org_gen_sys_file.AddFun(get_evaluations, "evaluations");
+
+    org_gen_sys_file.PrintHeaderKeys();
+
+    // Add function(s) to program systematics snapshot
+    org_genotypic_systematics->AddSnapshotFun(
+        [](const org_taxon_t & t) {
+            std::ostringstream stream;
+            t.GetInfo().PrintCSVEntry(stream);
+            return stream.str();
+        }, 
+        "program", 
+        "Program");
+    */
 }
 
 void Experiment::SetupDataCollectionFunctions(){
@@ -591,32 +716,22 @@ void Experiment::SetupDataCollectionFunctions(){
         world->GetOrg(stats_focus_org_id).GetGenome().PrintCSVEntry(stream);
         return stream.str();
     }; 
+
+    // Problem specific functions
+    SetupProblemDataCollectionFunctions();
 }
 
 void Experiment::InitializePopulation(){
-    
-    for(size_t i = 0; i < POP_SIZE; ++i)
-        world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
-            MAX_PROG_SIZE), 1);  
-    /*
-    emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
-    hardware_t::Program sol(inst_lib);
-    
-    sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum3",    {matrix[2], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum4",    {matrix[3], matrix[7], matrix[7]});
-    sol.PushInst("MakeVector",  {matrix[0], matrix[3], matrix[4]});
-    sol.PushInst("Foreach",     {matrix[5], matrix[4], matrix[7]});
-    sol.PushInst("TestNumLess", {matrix[5], matrix[0], matrix[6]});
-    sol.PushInst("If",          {matrix[6], matrix[7], matrix[7]});
-    sol.PushInst("CopyMem",     {matrix[5], matrix[0], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
-    world->Inject(sol, POP_SIZE);   
-    */
-
+    if(HARDWIRE_SOLUTION){
+        std::cout << "HARDWIRE_SOLUTION set in config. This should give a solution at gen 0."
+                  << std::endl;
+        world->Inject(GetKnownSolution(), POP_SIZE); 
+    }
+    else{
+        for(size_t i = 0; i < POP_SIZE; ++i)
+            world->Inject(TagLGP::GenRandTagGPProgram(*randPtr, inst_lib, MIN_PROG_SIZE, 
+                MAX_PROG_SIZE), 1);  
+    }
     std::cout << "Initial pop size: " << world->GetSize() << std::endl; 
 }
 
@@ -749,7 +864,7 @@ void Experiment::Select(){
     }
 }
 
-//TODO: Add phylo record keeping
+//TODO: Add phylogenetic record keeping
 void Experiment::UpdateRecords(){
     current_best_score = 0.0;
     actual_current_best_score = 0.0;
@@ -771,7 +886,7 @@ void Experiment::UpdateRecords(){
         // Test potential solutions
         if(actual_pass_total == max_passes
                 && cur_org.GetGenome().GetSize() < smallest_solution_size){
-            if(TestValidation(cur_org)){
+            if(TestValidation(prog_id, cur_org)){
                 std::cout << "Dominant solution found! ID: " << prog_id << std::endl;
                 if(!solution_found){
                     update_first_solution_found = cur_update;
@@ -779,11 +894,20 @@ void Experiment::UpdateRecords(){
                 solution_found = true;
                 smallest_solution_size = cur_org.GetGenome().GetSize();
                 stats_focus_org_id = prog_id;
-                RunAllValidations(cur_org);
+                RunAllValidations(prog_id, cur_org);
                 solution_file->Update();
             }
         } 
     }
+    
+    /*
+    // Track most recent common ancestor
+    emp::Ptr<org_taxon_t> cur_taxa = org_genotypic_systematics->GetMRCA();
+    if (cur_taxa != mrca_taxa_ptr) {
+      ++mrca_changes;
+      mrca_taxa_ptr = cur_taxa;
+    }
+    */
     if(cur_update % SNAPSHOT_INTERVAL == 0 || update_first_solution_found == cur_update || 
             cur_update >= GENERATIONS){
         SavePopSnapshot();
@@ -795,6 +919,7 @@ void Experiment::UpdateRecords(){
     }
 }
 
+//TODO: Hook up systematics
 void Experiment::SavePopSnapshot(){
     std::string snapshot_dir = OUTPUT_DIR + "pop_" + emp::to_string((int)world->GetUpdate());
     mkdir(snapshot_dir.c_str(), ACCESSPERMS);
@@ -826,20 +951,24 @@ void Experiment::SavePopSnapshot(){
 
     file.PrintHeaderKeys();
 
+    // Reset all validation outputs
+    ResetValidation();
     // For each program in the population, dump the program and anything we want to know about it.
     for (stats_focus_org_id = 0; stats_focus_org_id < world->GetSize(); ++stats_focus_org_id) {
         if (!world->IsOccupied(stats_focus_org_id)) continue;
         //Do Validation check 
-        RunAllValidations(world->GetOrg(stats_focus_org_id));
+        RunAllValidations(stats_focus_org_id, world->GetOrg(stats_focus_org_id));
         // Update snapshot file
         file.Update();
     }
-   //TODO: Hook up phylogeny metrics 
-    /*
+    
     // Take diversity snapshot
-    prog_phen_diversity_file->Update();
+    phen_diversity_file->Update();
     // Snapshot phylogeny
-    prog_genotypic_systematics->Snapshot(snapshot_dir + 
+    
+    //TODO: Hook up systematics
+    /*
+    org_genotypic_systematics->Snapshot(snapshot_dir + 
             "/program_phylogeny_" + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
     */
 }
@@ -855,24 +984,24 @@ void Experiment::Update(){
     world->ClearCache();
 }
 
-bool Experiment::TestValidation(org_t& org){
+bool Experiment::TestValidation(size_t org_id, org_t& org){
     for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
         SetupSingleValidation(org, test_id);
-        if(!RunSingleValidation(org, test_id).passed){
+        if(!RunSingleValidation(org_id, org, test_id).passed){
             return false;
         }
     }
     return true;
 }
 
-void Experiment::RunAllValidations(org_t& org){
+void Experiment::RunAllValidations(size_t org_id, org_t& org){
     validation_results.resize(num_test_cases, TestResult());
     validation_passes = 0;  
     validation_fails = 0;  
     validation_submissions = 0;  
     for(size_t test_id = 0; test_id < num_test_cases; ++test_id){
         SetupSingleValidation(org, test_id);
-        validation_results[test_id] = RunSingleValidation(org, test_id);
+        validation_results[test_id] = RunSingleValidation(org_id, org, test_id);
         if(validation_results[test_id].passed)
             ++validation_passes;
         else
@@ -882,7 +1011,6 @@ void Experiment::RunAllValidations(org_t& org){
     }
 }
 
-//TODO: Format this
 void Experiment::AddDefaultInstructions(const std::unordered_set<std::string> & 
     includes={"Add","Sub","Mult","Div","Mod", "TestNumEqu","TestNumNEqu","TestNumLess",
         "TestNumLessTEqu","TestNumGreater","TestNumGreaterTEqu","Floor","Not","Inc","Dec",

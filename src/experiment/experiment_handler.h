@@ -11,21 +11,11 @@
 #include "./base/assert.h"
 // Local includes
 #include "./experiment_smallest.h"
-#include "./experiment_triple_addition.h"
-#include "./experiment_return_two.h"
-#include "./experiment_add_two.h"
-#include "./experiment_smallest_two.h"
-#include "./experiment_smallest_three.h"
 
 class ExperimentHandler{
 public:
     enum ProblemType{
-        SMALLEST = 0,
-        TRIPLE_ADDITION = 10,
-        RETURN_TWO = 11,
-        ADD_TWO = 12,
-        SMALLEST_TWO = 13,
-        SMALLEST_THREE = 14
+        SMALLEST = 0
     };
 private:
     emp::Ptr<Experiment> exp_ptr;
@@ -56,26 +46,6 @@ void ExperimentHandler::Setup(const ExperimentConfig& config) {
     switch(problem_type){
         case ProblemType::SMALLEST: {
             exp_ptr = emp::NewPtr<Experiment_Smallest>();
-            break;
-        }
-        case ProblemType::TRIPLE_ADDITION: {
-            exp_ptr = emp::NewPtr<Experiment_Triple_Addition>();
-            break;
-        }
-        case ProblemType::RETURN_TWO: {
-            exp_ptr = emp::NewPtr<Experiment_Return_Two>();
-            break;
-        }
-        case ProblemType::ADD_TWO: {
-            exp_ptr = emp::NewPtr<Experiment_Add_Two>();
-            break;
-        }
-        case ProblemType::SMALLEST_TWO: {
-            exp_ptr = emp::NewPtr<Experiment_Smallest_Two>();
-            break;
-        }
-        case ProblemType::SMALLEST_THREE: {
-            exp_ptr = emp::NewPtr<Experiment_Smallest_Three>();
             break;
         }
         default: {

@@ -27,11 +27,14 @@ class Experiment_Smallest : public Experiment{
         // Implementations of abstract methods from base class
         void SetupProblem();
         void SetupDilution();
+        void SetupProblemDataCollectionFunctions();
         void SetupSingleTest(org_t& org, size_t test_id);
         void SetupSingleValidation(org_t& org, size_t test_id);
         void RunSingleTest(org_t& org, size_t test_id, size_t local_test_id);
-        TestResult RunSingleValidation(org_t& org, size_t test_id);
-    
+        TestResult RunSingleValidation(size_t org_id, org_t& org, size_t test_id);
+        void ResetValidation();   
+        hardware_t::Program GetKnownSolution();
+ 
         static std::pair<input_t, output_t> LoadTestCaseFromLine
                 (const emp::vector<std::string>& line);
         static output_t GenCorrectOutput(input_t &input);
@@ -59,7 +62,9 @@ class Experiment_Smallest : public Experiment{
         bool submitted;
         input_t cur_input;
         output_t cur_output;
-         
+        
+        // Validation Outputs for diversity tracking
+        emp::vector<emp::vector<output_t>> validation_outputs;
         
     public:
         Experiment_Smallest();
@@ -136,6 +141,15 @@ void Experiment_Smallest::SetupDilution(){
     }
 }
 
+void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
+    program_stats.get_prog_behavioral_diversity = [this]() { 
+        return emp::ShannonEntropy(validation_outputs); 
+    };
+    program_stats.get_prog_unique_behavioral_phenotypes = [this]() { 
+        return emp::UniqueCount(validation_outputs); 
+    };
+}
+
 void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
     input_t & input = training_set.GetInput(test_id);
     cur_test_id = test_id;
@@ -190,7 +204,8 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local
     }
 }
 
-Experiment::TestResult Experiment_Smallest::RunSingleValidation(org_t& org, size_t test_id){
+Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, org_t& org, 
+    size_t test_id){
     // Check for auto-pass cases
     if(test_set.GetInput(test_id).second){
         std::cout << "Error! We should not have a validation case that is auto-pass!" << std::endl;
@@ -204,20 +219,7 @@ Experiment::TestResult Experiment_Smallest::RunSingleValidation(org_t& org, size
                 break;
         }
         if(submitted){
-            /*
-            if(org.GetNumActualPasses() == org.GetLocalSize() && submitted_val != test_set.GetOutput(test_id)){
-                input_t input = test_set.GetInput(test_id);
-                std::cout << "Failed a validation case we *should* have passed: " << std::endl;
-                std::cout << "Input: <";
-                std::cout <<  input.first[0] << ", ";
-                std::cout <<  input.first[1] << ", ";
-                std::cout <<  input.first[2] << ", ";
-                std::cout <<  input.first[3] << ">" << std::endl;
-                std::cout << "Expected output: " << test_set.GetOutput(test_id) << std::endl;
-                std::cout << "Actual output: " << submitted_val << std::endl;
-                exit(0);
-            }
-            */
+            validation_outputs[org_id][test_id] = submitted_val;
             return TestResult(submitted_val == test_set.GetOutput(test_id), true);
         }
         else{
@@ -226,6 +228,33 @@ Experiment::TestResult Experiment_Smallest::RunSingleValidation(org_t& org, size
     }
 }
 
+void Experiment_Smallest::ResetValidation(){
+    validation_outputs.resize(POP_SIZE);
+    for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+        validation_outputs[prog_id].resize(num_test_cases);
+    }
+}  
+
+Experiment::hardware_t::Program Experiment_Smallest::GetKnownSolution(){
+    emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
+    hardware_t::Program sol(inst_lib);
+    
+    sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
+    sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
+    sol.PushInst("LoadNum3",    {matrix[2], matrix[7], matrix[7]});
+    sol.PushInst("LoadNum4",    {matrix[3], matrix[7], matrix[7]});
+    sol.PushInst("MakeVector",  {matrix[0], matrix[3], matrix[4]});
+    sol.PushInst("Foreach",     {matrix[5], matrix[4], matrix[7]});
+    sol.PushInst("TestNumLess", {matrix[5], matrix[0], matrix[6]});
+    sol.PushInst("If",          {matrix[6], matrix[7], matrix[7]});
+    sol.PushInst("CopyMem",     {matrix[5], matrix[0], matrix[7]});
+    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
+    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
+    sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
+
+    return sol;
+}
+ 
 std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 
             Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
     input_t input;   
