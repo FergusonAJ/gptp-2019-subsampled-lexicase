@@ -80,8 +80,10 @@ public:
     struct TestResult{
         bool passed;
         bool submitted;
-        TestResult(bool p, bool s) : passed(p), submitted(s) { ; }
-        TestResult() : passed(false), submitted(false) { ; }
+        double score;
+        TestResult(bool pass, bool submit, double scr = 0.0): 
+            passed(pass), submitted(submit), score(scr){ ; }
+        TestResult() : passed(false), submitted(false), score(0.0) { ; }
     };
 protected:
     emp::Ptr<emp::Random> randPtr;
@@ -278,7 +280,7 @@ void Experiment::Setup(const ExperimentConfig& config){
 
     //TODO: Add smallest pressure
     world->SetFitFun([this](org_t& org){
-        double fitness = (double)org.GetNumPasses();
+        double fitness = (double)org.GetTotalLocalScore();
         return fitness;
     });
  
@@ -638,7 +640,7 @@ void Experiment::SetupDataCollectionFunctions(){
     };
      
     program_stats.get_fitness_eval__total_score = [this]() { 
-        return world->GetOrg(stats_focus_org_id).GetNumPasses(); 
+        return world->GetOrg(stats_focus_org_id).GetTotalLocalScore(); 
     };
   
     program_stats.get_fitness_eval__num_passes = [this]() { 
@@ -659,7 +661,7 @@ void Experiment::SetupDataCollectionFunctions(){
         for (size_t test_id = 0; test_id < max_passes; ++test_id) {
             if (test_id) 
                 scores += ",";
-            scores += emp::to_string(org.GetRawLocalScore(test_id));
+            scores += emp::to_string(org.GetRawLocalStatus(test_id));
         }
         scores += "]\"";
         return scores;

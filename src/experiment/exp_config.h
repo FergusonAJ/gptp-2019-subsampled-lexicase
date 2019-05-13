@@ -36,7 +36,7 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     GROUP(HARDWARE, "Virtual evaluation hardware settings"), 
     VALUE(MIN_TAG_SPECIFICITY, double, 0.0, "What is the minimum tag similarity required for"
         " a tag to successfully reference another tag?"),
-    VALUE(MAX_CALL_DEPTH, size_t, 128, "Maximum depth of hardware's call stack."),
+    VALUE(MAX_CALL_DEPTH, size_t, 64, "Maximum depth of hardware's call stack."),
     
     // Problem Group 
     GROUP(PROBLEM_GROUP, "General settings for constructing a problem"),
@@ -74,9 +74,12 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(SNAPSHOT_INTERVAL, size_t, 100, "How often should we take population snapshots?"),
     VALUE(SUMMARY_STATS_INTERVAL, size_t, 100, "How often should we output summary stats?"),
     VALUE(SOLUTION_SCREEN_INTERVAL, size_t, 1000, "How often should we screen entire population " 
-        "for solutions?")
+        "for solutions?"),
 
-
+    // Debugging Group
+    GROUP(DEBUGGING_GROUP, "Settings to help you debug"),
+    VALUE(HARDWIRE_SOLUTION, size_t, 0, "If 1, initial population is seeded with "
+        "handwritten solutions")
 
 )
 

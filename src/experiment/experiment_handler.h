@@ -11,11 +11,13 @@
 #include "./base/assert.h"
 // Local includes
 #include "./experiment_smallest.h"
+#include "./experiment_for_loop_index.h"
 
 class ExperimentHandler{
 public:
     enum ProblemType{
-        SMALLEST = 0
+        SMALLEST = 0,
+        FOR_LOOP_INDEX = 1
     };
 private:
     emp::Ptr<Experiment> exp_ptr;
@@ -46,6 +48,10 @@ void ExperimentHandler::Setup(const ExperimentConfig& config) {
     switch(problem_type){
         case ProblemType::SMALLEST: {
             exp_ptr = emp::NewPtr<Experiment_Smallest>();
+            break;
+        }
+        case ProblemType::FOR_LOOP_INDEX: {
+            exp_ptr = emp::NewPtr<Experiment_For_Loop_Index>();
             break;
         }
         default: {

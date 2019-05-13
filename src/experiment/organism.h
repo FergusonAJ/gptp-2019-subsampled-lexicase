@@ -26,9 +26,11 @@ protected:
     size_t num_actual_fails;  //    ignoring auto-passes, it gives the true pass/fail result
     size_t num_actual_submissions;
     emp::vector<TestStatus> status_vec; // Covers every single test case
+    emp::vector<double> score_vec; // Covers every single test case 
     emp::vector<TestStatus> local_status_vec; // Only covers the cases to be encountered
+    emp::vector<double> local_score_vec; // Only covers the cases to be encountered
     emp::vector<TestStatus> actual_local_status_vec; // Only covers the cases to be encountered
-    
+    emp::vector<double> actual_local_score_vec; // Only covers the cases to be encountered
 
 public:
     Organism(){
@@ -53,20 +55,28 @@ public:
         num_actual_submissions = 0;   
         status_vec.clear();
         status_vec.resize(num_cases, TestStatus::UNTESTED);
+        score_vec.clear();
+        score_vec.resize(num_cases, 0.0);
     }
     void Reset(size_t num_cases, size_t num_local_cases){
         Reset(num_cases);
         local_status_vec.clear();
         local_status_vec.resize(num_local_cases, TestStatus::UNTESTED);
+        local_score_vec.clear();
+        local_score_vec.resize(num_local_cases, 0.0);
         actual_local_status_vec.clear();
         actual_local_status_vec.resize(num_local_cases, TestStatus::UNTESTED);
+        actual_local_score_vec.clear();
+        actual_local_score_vec.resize(num_local_cases, 0.0);
     }
 
-    void Record(size_t test_id, bool pass, bool submitted){
+    void Record(size_t test_id, bool pass, bool submitted, double score){
         if(test_id >= status_vec.size()){
             std::cout << "Error! Tried to assign score for test case #" << test_id;
             std::cout << " while organism's vector has length" << status_vec.size() << std::endl;
+            exit(-1);
         }
+        score_vec[test_id] = score;
         if(pass){ 
             ++num_passes;
             if(submitted)
@@ -81,14 +91,15 @@ public:
         if(submitted)
             ++num_submissions;
     }
-    void Record(size_t test_id, bool pass, bool submitted, size_t local_test_id){
-        Record(test_id, pass, submitted);
+    void Record(size_t test_id, bool pass, bool submitted, double score, size_t local_test_id){
+        Record(test_id, pass, submitted, score);
         if(local_test_id >= local_status_vec.size()){
             std::cout << "Error! Tried to assign score for local test case #" << local_test_id;
             std::cout << " while organism's local vector has length" << local_status_vec.size();
             std::cout << std::endl;
             exit(-1);
         }
+        local_score_vec[local_test_id] = score;
         if(pass){ 
             if(submitted)
                 local_status_vec[local_test_id] = TestStatus::PASS;
@@ -99,7 +110,7 @@ public:
             local_status_vec[local_test_id] = TestStatus::FAIL;
     }
 
-    void RecordActual(bool pass, bool submitted, size_t local_test_id){
+    void RecordActual(bool pass, bool submitted, double score, size_t local_test_id){
         if(local_test_id >= actual_local_status_vec.size()){
             std::cout << "Error! Tried to assign score for actual local test case #"
                       << local_test_id
@@ -108,6 +119,7 @@ public:
                       << std::endl;
             exit(-1);
         }
+        actual_local_score_vec[local_test_id] = score;
         if(pass){ 
             ++num_actual_passes;
             actual_local_status_vec[local_test_id] = TestStatus::PASS;
@@ -120,34 +132,37 @@ public:
             ++num_actual_submissions;
     }
 
-
+    double GetTotalLocalScore(){
+        double sum = 0.0;
+        for(size_t i = 0; i < local_score_vec.size(); ++i){
+            sum += local_score_vec[i];
+        }
+        return sum;
+    }
     
     double GetScore(size_t test_id){
-        emp_assert(test_id < status_vec.size(), "Trying to get invalid score!");
-        double res = status_vec[test_id] == TestStatus::PASS;
-        return res;
+        emp_assert(test_id < score_vec.size(), "Trying to get invalid score!");
+        return score_vec[test_id];
     }
 
     double GetLocalScore(size_t local_test_id){
-        emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
-        double res = (local_status_vec[local_test_id] == TestStatus::PASS);
-        return res;
+        emp_assert(local_test_id < local_score_vec.size(), "Trying to get invalid local score!");
+        return local_score_vec[local_test_id];
     }
 
-    size_t GetActualLocalScore(size_t local_test_id){
-        emp_assert(local_test_id < actual_local_status_vec.size(), "Trying to get invalid "
+    double GetActualLocalScore(size_t local_test_id){
+        emp_assert(local_test_id < actual_local_score_vec.size(), "Trying to get invalid "
             "actual local score!");
-        size_t res = (actual_local_status_vec[local_test_id] == TestStatus::PASS);
-        return res;
+        return actual_local_score_vec[local_test_id];
     }
 
     //Also shows if its unseen   
-    size_t GetRawScore(size_t test_id){
+    size_t GetRawStatus(size_t test_id){
         emp_assert(test_id < status_vec.size(), "Trying to get invalid score!");
         return (size_t)status_vec[test_id];
     }
     //Also shows if its unseen   
-    size_t GetRawLocalScore(size_t local_test_id){
+    size_t GetRawLocalStatus(size_t local_test_id){
         emp_assert(local_test_id < local_status_vec.size(), "Trying to get invalid local score!");
         return (size_t)local_status_vec[local_test_id];
     }
