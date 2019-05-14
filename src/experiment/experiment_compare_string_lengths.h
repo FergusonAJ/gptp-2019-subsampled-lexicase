@@ -1,5 +1,5 @@
-#ifndef COHORT_EXP_SMALLEST_H
-#define COHORT_EXP_SMALLEST_H
+#ifndef COHORT_EXP_CMP_STR_LEN_H
+#define COHORT_EXP_CMP_STR_LEN_H
 
 #include <iostream>
 #include <array>
@@ -15,12 +15,12 @@
 #include "./TestCaseSet.h"
 #include "Selection.h"
 
-class Experiment_Smallest : public Experiment{
+class Experiment_Compare_String_Lengths : public Experiment{
     public:
         // Readability aliases
-        using this_t = Experiment_Smallest;
-        using input_t = std::pair<std::array<int, 4>, bool>; // bool is for auto-pass
-        using output_t = int;                                   // (used for "watering down" cases)
+        using this_t = Experiment_Compare_String_Lengths;
+        using input_t = std::pair<std::array<std::string, 3>, bool>; // bool is for auto-pass
+        using output_t = bool;                                   // (used for "watering down" cases)
         using test_case_set_t = TestCaseSet<input_t, output_t>;
 
     protected:
@@ -44,11 +44,12 @@ class Experiment_Smallest : public Experiment{
         bool RunSingle();       
      
         // Custom virtual hardware instructions
-        void Inst_LoadNum1(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum2(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum3(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum4(hardware_t & hw, const inst_t & inst);
-        void Inst_SubmitNum(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadStr1(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadStr2(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadStr3(hardware_t & hw, const inst_t & inst);
+        void Inst_SubmitTrue(hardware_t & hw, const inst_t & inst);
+        void Inst_SubmitFalse(hardware_t & hw, const inst_t & inst);
+        void Inst_SubmitVal(hardware_t & hw, const inst_t & inst);
         
         std::string filename;
         test_case_set_t training_set;
@@ -67,23 +68,23 @@ class Experiment_Smallest : public Experiment{
         emp::vector<emp::vector<output_t>> validation_outputs;
         
     public:
-        Experiment_Smallest();
-        ~Experiment_Smallest();
+        Experiment_Compare_String_Lengths();
+        ~Experiment_Compare_String_Lengths();
 };
 
-Experiment_Smallest::Experiment_Smallest():
+Experiment_Compare_String_Lengths::Experiment_Compare_String_Lengths():
     training_set(this_t::LoadTestCaseFromLine),
     test_set(this_t::LoadTestCaseFromLine),
     problems_loaded(false){
 }
 
-Experiment_Smallest::~Experiment_Smallest(){
+Experiment_Compare_String_Lengths::~Experiment_Compare_String_Lengths(){
 
 }
 
 
-void Experiment_Smallest::SetupProblem(){
-    std::cout << "Setting up problem: \"smallest\"" << std::endl;
+void Experiment_Compare_String_Lengths::SetupProblem(){
+    std::cout << "Setting up problem: \"compare string lengths\"" << std::endl;
     std::cout << "Loading training set from " << TRAINING_SET_FILENAME << std::endl;
     training_set.LoadTestCasesWithCSVReader(TRAINING_SET_FILENAME);
     std::cout << "Found " << training_set.GetSize() << " test cases in training set." << std::endl;
@@ -100,15 +101,16 @@ void Experiment_Smallest::SetupProblem(){
 }
 
 // Sets up a run for a given program for the specifed input
-void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
+void Experiment_Compare_String_Lengths::SetupSingle(org_t& org, const input_t& input){
     // Reset virtual hardware (global memory and callstack)
     // This is from Alex and Jose's work (Alex created the virtual hardware system)
     hardware->Reset();
     hardware->SetProgram(org.GetGenome());
     hardware->CallModule(call_tag, MIN_TAG_SPECIFICITY, true, false); 
-    emp_assert(hardware->GetMemSize() >= 4, "Smallest requires a memory size of at least 4");
+    emp_assert(hardware->GetMemSize() >= 3, "Compare string length requires a memory size "
+        "of at least 3");
     submitted = false;
-    submitted_val = 0;
+    submitted_val = false;
     // Configure inputs.
     if (hardware->GetCallStackSize()) {
         hardware_t::CallState & state = hardware->GetCurCallState();
@@ -117,7 +119,6 @@ void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
         wmem.Set(0, input.first[0]);
         wmem.Set(1, input.first[1]);
         wmem.Set(2, input.first[2]);
-        wmem.Set(3, input.first[3]);
     }
     else{
         std::cout << "Error in DoSingleTest, GetCallStackSize() returned 0." << std::endl;
@@ -125,7 +126,7 @@ void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
     }
 }
 
-void Experiment_Smallest::SetupDilution(){
+void Experiment_Compare_String_Lengths::SetupDilution(){
     if(!problems_loaded){
         std::cout << "Cannot dilute problems that have not been loaded. Terminating." << std::endl;
         exit(-1);
@@ -141,7 +142,7 @@ void Experiment_Smallest::SetupDilution(){
     }
 }
 
-void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
+void Experiment_Compare_String_Lengths::SetupProblemDataCollectionFunctions(){
     program_stats.get_prog_behavioral_diversity = [this]() { 
         return emp::ShannonEntropy(validation_outputs); 
     };
@@ -150,7 +151,7 @@ void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
     };
 }
 
-void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
+void Experiment_Compare_String_Lengths::SetupSingleTest(org_t& org, size_t test_id){
     input_t & input = training_set.GetInput(test_id);
     cur_test_id = test_id;
     cur_input = input;
@@ -158,7 +159,7 @@ void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
+void Experiment_Compare_String_Lengths::SetupSingleValidation(org_t& org, size_t test_id){
     input_t & input = test_set.GetInput(test_id);
     cur_test_id = test_id;
     cur_input = input;
@@ -166,7 +167,7 @@ void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
+void Experiment_Compare_String_Lengths::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
     // Check for auto-pass cases
     if(training_set.GetInput(test_id).second){
         // Record the auto pass, still compute "actual" passes
@@ -203,7 +204,7 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local
     }
 }
 
-Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, org_t& org, 
+Experiment::TestResult Experiment_Compare_String_Lengths::RunSingleValidation(size_t org_id, org_t& org, 
     size_t test_id){
     // Check for auto-pass cases
     if(test_set.GetInput(test_id).second){
@@ -228,54 +229,61 @@ Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, o
     }
 }
 
-void Experiment_Smallest::ResetValidation(){
+void Experiment_Compare_String_Lengths::ResetValidation(){
     validation_outputs.resize(POP_SIZE);
     for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
         validation_outputs[prog_id].resize(num_test_cases);
     }
 }  
 
-Experiment::hardware_t::Program Experiment_Smallest::GetKnownSolution(){
+Experiment::hardware_t::Program Experiment_Compare_String_Lengths::GetKnownSolution(){
     emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
     hardware_t::Program sol(inst_lib);
     
-    sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum3",    {matrix[2], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum4",    {matrix[3], matrix[7], matrix[7]});
-    sol.PushInst("MakeVector",  {matrix[0], matrix[3], matrix[4]});
-    sol.PushInst("Foreach",     {matrix[5], matrix[4], matrix[7]});
-    sol.PushInst("TestNumLess", {matrix[5], matrix[0], matrix[6]});
-    sol.PushInst("If",          {matrix[6], matrix[7], matrix[7]});
-    sol.PushInst("CopyMem",     {matrix[5], matrix[0], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
+    sol.PushInst("StrLength",   {matrix[0], matrix[0], matrix[4]});
+    sol.PushInst("StrLength",   {matrix[1], matrix[1], matrix[4]});
+    sol.PushInst("StrLength",   {matrix[2], matrix[2], matrix[4]});
+    sol.PushInst("TestNumLess", {matrix[0], matrix[1], matrix[3]});
+    sol.PushInst("If",          {matrix[3], matrix[4], matrix[4]});
+    sol.PushInst("TestNumLess", {matrix[1], matrix[2], matrix[3]});
+    sol.PushInst("If",          {matrix[3], matrix[4], matrix[4]});
+    sol.PushInst("SubmitVal",   {matrix[3], matrix[4], matrix[4]});
+    sol.PushInst("Close",       {matrix[4], matrix[4], matrix[4]});
+    sol.PushInst("Close",       {matrix[4], matrix[4], matrix[4]});
+    sol.PushInst("SubmitVal",   {matrix[3], matrix[4], matrix[4]});
 
     return sol;
 }
  
-std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 
-            Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
+std::pair<Experiment_Compare_String_Lengths::input_t, Experiment_Compare_String_Lengths::output_t> 
+            Experiment_Compare_String_Lengths::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
     input_t input;   
     output_t output; 
     // Load input.
-    input.first[0] = std::atof(line[0].c_str());
-    input.first[1] = std::atof(line[1].c_str());
-    input.first[2] = std::atof(line[2].c_str());
-    input.first[3] = std::atof(line[3].c_str());
+    input.first[0] = line[0];
+    input.first[1] = line[1];
+    input.first[2] = line[2];
     input.second = false;
     // Load output.
-    output = std::atof(line[4].c_str());
+    if(line[3] == "true")
+        output = true;
+    else if (line[3] == "false")
+        output = false;
+    else{
+        std::cout << "Error! Trying to load boolean test case output with value" 
+                  << line[3] << "!" << std::endl;    
+        exit(-1);
+    }
     emp_assert(output == GenCorrectOutput(input));
     return {input, output};
 }
 
-Experiment_Smallest::output_t Experiment_Smallest::GenCorrectOutput(input_t &input){
-    return *std::min_element(input.first.begin(), input.first.end());
+Experiment_Compare_String_Lengths::output_t Experiment_Compare_String_Lengths::GenCorrectOutput(input_t &input){
+    return input.first[0].size() < input.first[1].size() 
+        && input.first[1].size() < input.first[2].size();
 }
 
-void Experiment_Smallest::SetupInstructions(){
+void Experiment_Compare_String_Lengths::SetupInstructions(){
     // Add default instructions to instruction set.
     AddDefaultInstructions({"Add",
                           "Sub",
@@ -311,48 +319,40 @@ void Experiment_Smallest::SetupInstructions(){
                           "Routine",
                           "Return",
                           "ModuleDef",
-                          "MakeVector",
-                          "VecGet",
-                          "VecSet",
-                          "VecLen",
-                          "VecAppend",
-                          "VecPop",
-                          "VecRemove",
-                          "VecReplaceAll",
-                          "VecIndexOf",
-                          "VecOccurrencesOf",
-                          "VecReverse",
-                          "VecSwapIfLess",
-                          "VecGetFront",
-                          "VecGetBack",
                           "IsNum",
-                          "IsVec"
+                          "IsStr",
+                          "StrLength",
+                          "StrConcat"
     });
     // -- Custom Instructions --
-    inst_lib->AddInst("LoadNum1", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum1(hw, inst);
+    inst_lib->AddInst("LoadStr1", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadStr1(hw, inst);
     }, 1);
 
-    inst_lib->AddInst("LoadNum2", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum2(hw, inst);
+    inst_lib->AddInst("LoadStr2", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadStr2(hw, inst);
     }, 1);
 
-    inst_lib->AddInst("LoadNum3", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum3(hw, inst);
+    inst_lib->AddInst("LoadStr3", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadStr3(hw, inst);
     }, 1);
 
-    inst_lib->AddInst("LoadNum4", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum4(hw, inst);
+    inst_lib->AddInst("SubmitTrue", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_SubmitTrue(hw, inst);
     }, 1);
-
-    inst_lib->AddInst("SubmitNum", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_SubmitNum(hw, inst);
+    
+    inst_lib->AddInst("SubmitFalse", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_SubmitFalse(hw, inst);
+    }, 1);
+    
+    inst_lib->AddInst("SubmitVal", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_SubmitVal(hw, inst);
     }, 1);
 
 
 }
 
-void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
+void Experiment_Compare_String_Lengths::Inst_LoadStr1(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -363,7 +363,7 @@ void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[0]);
 }
 
-void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
+void Experiment_Compare_String_Lengths::Inst_LoadStr2(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -374,7 +374,7 @@ void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[1]);
 }
 
-void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
+void Experiment_Compare_String_Lengths::Inst_LoadStr3(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -385,18 +385,17 @@ void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[2]);
 }
 
-void Experiment_Smallest::Inst_LoadNum4(hardware_t & hw, const inst_t & inst) {
-    hardware_t::CallState & state = hw.GetCurCallState();
-    hardware_t::Memory & wmem = state.GetWorkingMem();
-
-    // Find arguments
-    size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
-    if (!hw.IsValidMemPos(posA)) return;
-
-    wmem.Set(posA, cur_input.first[3]);
+void Experiment_Compare_String_Lengths::Inst_SubmitTrue(hardware_t & hw, const inst_t & inst) {
+    submitted = true;
+    submitted_val = true;
 }
 
-void Experiment_Smallest::Inst_SubmitNum(hardware_t & hw, const inst_t & inst) {
+void Experiment_Compare_String_Lengths::Inst_SubmitFalse(hardware_t & hw, const inst_t & inst) {
+    submitted = true;
+    submitted_val = false;
+}
+
+void Experiment_Compare_String_Lengths::Inst_SubmitVal(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -406,7 +405,7 @@ void Experiment_Smallest::Inst_SubmitNum(hardware_t & hw, const inst_t & inst) {
     if (!hw.IsValidMemPos(posA)) return;
 
     submitted = true;
-    submitted_val = (int)wmem.AccessVal(posA).GetNum();
+    submitted_val = (bool)wmem.AccessVal(posA).GetNum();
 }
 
 

@@ -12,12 +12,18 @@
 // Local includes
 #include "./experiment_smallest.h"
 #include "./experiment_for_loop_index.h"
+#include "./experiment_median.h"
+#include "./experiment_compare_string_lengths.h"
+#include "./experiment_grade.h"
 
 class ExperimentHandler{
 public:
     enum ProblemType{
         SMALLEST = 0,
-        FOR_LOOP_INDEX = 1
+        FOR_LOOP_INDEX = 1,
+        MEDIAN = 2,
+        COMPARE_STRING_LENGTHS = 3, 
+        GRADE = 4
     };
 private:
     emp::Ptr<Experiment> exp_ptr;
@@ -52,6 +58,18 @@ void ExperimentHandler::Setup(const ExperimentConfig& config) {
         }
         case ProblemType::FOR_LOOP_INDEX: {
             exp_ptr = emp::NewPtr<Experiment_For_Loop_Index>();
+            break;
+        }
+        case ProblemType::MEDIAN: {
+            exp_ptr = emp::NewPtr<Experiment_Median>();
+            break;
+        }
+        case ProblemType::COMPARE_STRING_LENGTHS: {
+            exp_ptr = emp::NewPtr<Experiment_Compare_String_Lengths>();
+            break;
+        }
+        case ProblemType::GRADE: {
+            exp_ptr = emp::NewPtr<Experiment_Grade>();
             break;
         }
         default: {

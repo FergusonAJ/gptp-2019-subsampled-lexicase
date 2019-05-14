@@ -1,5 +1,5 @@
-#ifndef COHORT_EXP_SMALLEST_H
-#define COHORT_EXP_SMALLEST_H
+#ifndef COHORT_EXP_MEDIAN_H
+#define COHORT_EXP_MEDIAN_H
 
 #include <iostream>
 #include <array>
@@ -7,19 +7,19 @@
 #include <algorithm>
 #include <cmath>
 
-//Empricial includes
+// Empricial includes
 #include "./base/assert.h"
 
-//Local includes
+// Local includes
 #include "./experiment.h"
 #include "./TestCaseSet.h"
 #include "Selection.h"
 
-class Experiment_Smallest : public Experiment{
+class Experiment_Median : public Experiment{
     public:
         // Readability aliases
-        using this_t = Experiment_Smallest;
-        using input_t = std::pair<std::array<int, 4>, bool>; // bool is for auto-pass
+        using this_t = Experiment_Median;
+        using input_t = std::pair<std::array<int, 3>, bool>; // bool is for auto-pass
         using output_t = int;                                   // (used for "watering down" cases)
         using test_case_set_t = TestCaseSet<input_t, output_t>;
 
@@ -47,7 +47,6 @@ class Experiment_Smallest : public Experiment{
         void Inst_LoadNum1(hardware_t & hw, const inst_t & inst);
         void Inst_LoadNum2(hardware_t & hw, const inst_t & inst);
         void Inst_LoadNum3(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum4(hardware_t & hw, const inst_t & inst);
         void Inst_SubmitNum(hardware_t & hw, const inst_t & inst);
         
         std::string filename;
@@ -67,23 +66,23 @@ class Experiment_Smallest : public Experiment{
         emp::vector<emp::vector<output_t>> validation_outputs;
         
     public:
-        Experiment_Smallest();
-        ~Experiment_Smallest();
+        Experiment_Median();
+        ~Experiment_Median();
 };
 
-Experiment_Smallest::Experiment_Smallest():
+Experiment_Median::Experiment_Median():
     training_set(this_t::LoadTestCaseFromLine),
     test_set(this_t::LoadTestCaseFromLine),
     problems_loaded(false){
 }
 
-Experiment_Smallest::~Experiment_Smallest(){
+Experiment_Median::~Experiment_Median(){
 
 }
 
 
-void Experiment_Smallest::SetupProblem(){
-    std::cout << "Setting up problem: \"smallest\"" << std::endl;
+void Experiment_Median::SetupProblem(){
+    std::cout << "Setting up problem: \"median\"" << std::endl;
     std::cout << "Loading training set from " << TRAINING_SET_FILENAME << std::endl;
     training_set.LoadTestCasesWithCSVReader(TRAINING_SET_FILENAME);
     std::cout << "Found " << training_set.GetSize() << " test cases in training set." << std::endl;
@@ -100,13 +99,13 @@ void Experiment_Smallest::SetupProblem(){
 }
 
 // Sets up a run for a given program for the specifed input
-void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
+void Experiment_Median::SetupSingle(org_t& org, const input_t& input){
     // Reset virtual hardware (global memory and callstack)
     // This is from Alex and Jose's work (Alex created the virtual hardware system)
     hardware->Reset();
     hardware->SetProgram(org.GetGenome());
     hardware->CallModule(call_tag, MIN_TAG_SPECIFICITY, true, false); 
-    emp_assert(hardware->GetMemSize() >= 4, "Smallest requires a memory size of at least 4");
+    emp_assert(hardware->GetMemSize() >= 3, "Median requires a memory size of at least 3");
     submitted = false;
     submitted_val = 0;
     // Configure inputs.
@@ -117,7 +116,6 @@ void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
         wmem.Set(0, input.first[0]);
         wmem.Set(1, input.first[1]);
         wmem.Set(2, input.first[2]);
-        wmem.Set(3, input.first[3]);
     }
     else{
         std::cout << "Error in DoSingleTest, GetCallStackSize() returned 0." << std::endl;
@@ -125,7 +123,7 @@ void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
     }
 }
 
-void Experiment_Smallest::SetupDilution(){
+void Experiment_Median::SetupDilution(){
     if(!problems_loaded){
         std::cout << "Cannot dilute problems that have not been loaded. Terminating." << std::endl;
         exit(-1);
@@ -141,7 +139,7 @@ void Experiment_Smallest::SetupDilution(){
     }
 }
 
-void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
+void Experiment_Median::SetupProblemDataCollectionFunctions(){
     program_stats.get_prog_behavioral_diversity = [this]() { 
         return emp::ShannonEntropy(validation_outputs); 
     };
@@ -150,7 +148,7 @@ void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
     };
 }
 
-void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
+void Experiment_Median::SetupSingleTest(org_t& org, size_t test_id){
     input_t & input = training_set.GetInput(test_id);
     cur_test_id = test_id;
     cur_input = input;
@@ -158,7 +156,7 @@ void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
+void Experiment_Median::SetupSingleValidation(org_t& org, size_t test_id){
     input_t & input = test_set.GetInput(test_id);
     cur_test_id = test_id;
     cur_input = input;
@@ -166,7 +164,7 @@ void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
+void Experiment_Median::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
     // Check for auto-pass cases
     if(training_set.GetInput(test_id).second){
         // Record the auto pass, still compute "actual" passes
@@ -203,7 +201,7 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local
     }
 }
 
-Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, org_t& org, 
+Experiment::TestResult Experiment_Median::RunSingleValidation(size_t org_id, org_t& org, 
     size_t test_id){
     // Check for auto-pass cases
     if(test_set.GetInput(test_id).second){
@@ -228,54 +226,61 @@ Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, o
     }
 }
 
-void Experiment_Smallest::ResetValidation(){
+void Experiment_Median::ResetValidation(){
     validation_outputs.resize(POP_SIZE);
     for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
         validation_outputs[prog_id].resize(num_test_cases);
     }
 }  
 
-Experiment::hardware_t::Program Experiment_Smallest::GetKnownSolution(){
+Experiment::hardware_t::Program Experiment_Median::GetKnownSolution(){
     emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
     hardware_t::Program sol(inst_lib);
     
-    sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum3",    {matrix[2], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum4",    {matrix[3], matrix[7], matrix[7]});
-    sol.PushInst("MakeVector",  {matrix[0], matrix[3], matrix[4]});
-    sol.PushInst("Foreach",     {matrix[5], matrix[4], matrix[7]});
-    sol.PushInst("TestNumLess", {matrix[5], matrix[0], matrix[6]});
-    sol.PushInst("If",          {matrix[6], matrix[7], matrix[7]});
-    sol.PushInst("CopyMem",     {matrix[5], matrix[0], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
+    sol.PushInst("MakeVector",    {matrix[0], matrix[2], matrix[4]});
+    sol.PushInst("LoadNum1",      {matrix[5], matrix[0], matrix[0]});
+    sol.PushInst("LoadNum1",      {matrix[6], matrix[0], matrix[0]});
+    sol.PushInst("Foreach",       {matrix[0], matrix[4], matrix[0]});
+    sol.PushInst(  "TestNumLess", {matrix[0], matrix[5], matrix[1]});
+    sol.PushInst(  "If",          {matrix[1], matrix[0], matrix[0]});
+    sol.PushInst(    "CopyMem",   {matrix[0], matrix[5], matrix[0]});
+    sol.PushInst(  "Close",       {matrix[0], matrix[0], matrix[0]});
+    sol.PushInst(  "TestNumLess", {matrix[6], matrix[0], matrix[1]});
+    sol.PushInst(  "If",          {matrix[1], matrix[0], matrix[0]});
+    sol.PushInst(    "CopyMem",   {matrix[0], matrix[6], matrix[0]});
+    sol.PushInst(  "Close",       {matrix[0], matrix[0], matrix[0]});
+    sol.PushInst(  "Add",         {matrix[0], matrix[7], matrix[7]});
+    sol.PushInst("Close",         {matrix[0], matrix[0], matrix[0]});
+    sol.PushInst("Sub",           {matrix[7], matrix[5], matrix[7]});
+    sol.PushInst("Sub",           {matrix[7], matrix[6], matrix[7]});
+    sol.PushInst("SubmitNum",     {matrix[7], matrix[0], matrix[0]});    
 
     return sol;
 }
  
-std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 
-            Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
+std::pair<Experiment_Median::input_t, Experiment_Median::output_t> 
+            Experiment_Median::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
     input_t input;   
     output_t output; 
     // Load input.
     input.first[0] = std::atof(line[0].c_str());
     input.first[1] = std::atof(line[1].c_str());
     input.first[2] = std::atof(line[2].c_str());
-    input.first[3] = std::atof(line[3].c_str());
     input.second = false;
     // Load output.
-    output = std::atof(line[4].c_str());
+    output = std::atof(line[3].c_str());
     emp_assert(output == GenCorrectOutput(input));
     return {input, output};
 }
 
-Experiment_Smallest::output_t Experiment_Smallest::GenCorrectOutput(input_t &input){
-    return *std::min_element(input.first.begin(), input.first.end());
+Experiment_Median::output_t Experiment_Median::GenCorrectOutput(input_t &input){
+    int sum = input.first[0] + input.first[1] + input.first[2];
+    sum -=  *std::min_element(input.first.begin(), input.first.end());
+    sum -=  *std::max_element(input.first.begin(), input.first.end());
+    return sum;
 }
 
-void Experiment_Smallest::SetupInstructions(){
+void Experiment_Median::SetupInstructions(){
     // Add default instructions to instruction set.
     AddDefaultInstructions({"Add",
                           "Sub",
@@ -340,11 +345,6 @@ void Experiment_Smallest::SetupInstructions(){
     inst_lib->AddInst("LoadNum3", [this](hardware_t & hw, const inst_t & inst) {
         this->Inst_LoadNum3(hw, inst);
     }, 1);
-
-    inst_lib->AddInst("LoadNum4", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum4(hw, inst);
-    }, 1);
-
     inst_lib->AddInst("SubmitNum", [this](hardware_t & hw, const inst_t & inst) {
         this->Inst_SubmitNum(hw, inst);
     }, 1);
@@ -352,7 +352,7 @@ void Experiment_Smallest::SetupInstructions(){
 
 }
 
-void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
+void Experiment_Median::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -363,7 +363,7 @@ void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[0]);
 }
 
-void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
+void Experiment_Median::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -374,7 +374,7 @@ void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[1]);
 }
 
-void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
+void Experiment_Median::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -385,18 +385,7 @@ void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[2]);
 }
 
-void Experiment_Smallest::Inst_LoadNum4(hardware_t & hw, const inst_t & inst) {
-    hardware_t::CallState & state = hw.GetCurCallState();
-    hardware_t::Memory & wmem = state.GetWorkingMem();
-
-    // Find arguments
-    size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
-    if (!hw.IsValidMemPos(posA)) return;
-
-    wmem.Set(posA, cur_input.first[3]);
-}
-
-void Experiment_Smallest::Inst_SubmitNum(hardware_t & hw, const inst_t & inst) {
+void Experiment_Median::Inst_SubmitNum(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 

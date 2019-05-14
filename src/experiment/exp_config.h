@@ -8,8 +8,10 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     // General Group 
     GROUP(GENERAL, "General settings"), 
     VALUE(SEED, int, 909, "Random number seed (-1 to use current time)"),
-    VALUE(TREATMENT, size_t, 1, "0 for Reduced Lexicase, 1 for Cohort Lexicase,"
-        " 2 for Downsampled Lexicase"),
+    VALUE(TREATMENT, size_t, 1, 
+        "0 for Reduced Lexicase, " 
+        " 1 for Cohort Lexicase, "
+        " 2 for Downsampled Lexicase "),
     VALUE(POP_SIZE, size_t, 1000, "The size of our evolving population"),
     VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
     VALUE(DILUTION_PCT, double, 0.0, "The percentage of tests that will be auto-pass "
@@ -40,7 +42,12 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     
     // Problem Group 
     GROUP(PROBLEM_GROUP, "General settings for constructing a problem"),
-    VALUE(PROBLEM_ID, size_t, 0, "Which problem to test on? (0 for smallest)"),
+    VALUE(PROBLEM_ID, size_t, 0, "Which problem to test on? ("
+        "0 for smallest, "
+        "1 for for loop index, "
+        "2 for median, "
+        "3 for compare string lengths, "
+        "4 for grade)"),
     VALUE(TRAINING_SET_FILENAME, std::string, "./",  "Path (including name) for the .csv with the "
         "set of training test cases"),
     VALUE(TEST_SET_FILENAME, std::string, "./",  "Path (including name) for the .csv with the "
@@ -78,7 +85,7 @@ EMP_BUILD_CONFIG(ExperimentConfig,
 
     // Debugging Group
     GROUP(DEBUGGING_GROUP, "Settings to help you debug"),
-    VALUE(HARDWIRE_SOLUTION, size_t, 0, "If 1, initial population is seeded with "
+    VALUE(HARDWIRE_SOLUTION, size_t, 1, "If 1, initial population is seeded with "
         "handwritten solutions")
 
 )

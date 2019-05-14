@@ -1,5 +1,5 @@
-#ifndef COHORT_EXP_SMALLEST_H
-#define COHORT_EXP_SMALLEST_H
+#ifndef COHORT_EXP_GRADE_H
+#define COHORT_EXP_GRADE_H
 
 #include <iostream>
 #include <array>
@@ -15,12 +15,18 @@
 #include "./TestCaseSet.h"
 #include "Selection.h"
 
-class Experiment_Smallest : public Experiment{
+#define STR_A "A"
+#define STR_B "B"
+#define STR_C "C"
+#define STR_D "D"
+#define STR_F "F"
+
+class Experiment_Grade : public Experiment{
     public:
         // Readability aliases
-        using this_t = Experiment_Smallest;
-        using input_t = std::pair<std::array<int, 4>, bool>; // bool is for auto-pass
-        using output_t = int;                                   // (used for "watering down" cases)
+        using this_t = Experiment_Grade;
+        using input_t = std::pair<std::array<int, 5>, bool>; // bool is for auto-pass
+        using output_t = std::string;                        // (used for "watering down" cases)
         using test_case_set_t = TestCaseSet<input_t, output_t>;
 
     protected:
@@ -44,11 +50,16 @@ class Experiment_Smallest : public Experiment{
         bool RunSingle();       
      
         // Custom virtual hardware instructions
-        void Inst_LoadNum1(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum2(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum3(hardware_t & hw, const inst_t & inst);
-        void Inst_LoadNum4(hardware_t & hw, const inst_t & inst);
-        void Inst_SubmitNum(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadThreshA(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadThreshB(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadThreshC(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadThreshD(hardware_t & hw, const inst_t & inst);
+        void Inst_LoadGrade(hardware_t & hw, const inst_t & inst);
+        void Inst_Submit_A(hardware_t & hw, const inst_t & inst);
+        void Inst_Submit_B(hardware_t & hw, const inst_t & inst);
+        void Inst_Submit_C(hardware_t & hw, const inst_t & inst);
+        void Inst_Submit_D(hardware_t & hw, const inst_t & inst);
+        void Inst_Submit_F(hardware_t & hw, const inst_t & inst);
         
         std::string filename;
         test_case_set_t training_set;
@@ -65,25 +76,26 @@ class Experiment_Smallest : public Experiment{
         
         // Validation Outputs for diversity tracking
         emp::vector<emp::vector<output_t>> validation_outputs;
-        
+            
+
     public:
-        Experiment_Smallest();
-        ~Experiment_Smallest();
+        Experiment_Grade();
+        ~Experiment_Grade();
 };
 
-Experiment_Smallest::Experiment_Smallest():
+Experiment_Grade::Experiment_Grade():
     training_set(this_t::LoadTestCaseFromLine),
     test_set(this_t::LoadTestCaseFromLine),
     problems_loaded(false){
 }
 
-Experiment_Smallest::~Experiment_Smallest(){
+Experiment_Grade::~Experiment_Grade(){
 
 }
 
 
-void Experiment_Smallest::SetupProblem(){
-    std::cout << "Setting up problem: \"smallest\"" << std::endl;
+void Experiment_Grade::SetupProblem(){
+    std::cout << "Setting up problem: \"grade\"" << std::endl;
     std::cout << "Loading training set from " << TRAINING_SET_FILENAME << std::endl;
     training_set.LoadTestCasesWithCSVReader(TRAINING_SET_FILENAME);
     std::cout << "Found " << training_set.GetSize() << " test cases in training set." << std::endl;
@@ -100,15 +112,15 @@ void Experiment_Smallest::SetupProblem(){
 }
 
 // Sets up a run for a given program for the specifed input
-void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
+void Experiment_Grade::SetupSingle(org_t& org, const input_t& input){
     // Reset virtual hardware (global memory and callstack)
     // This is from Alex and Jose's work (Alex created the virtual hardware system)
     hardware->Reset();
     hardware->SetProgram(org.GetGenome());
     hardware->CallModule(call_tag, MIN_TAG_SPECIFICITY, true, false); 
-    emp_assert(hardware->GetMemSize() >= 4, "Smallest requires a memory size of at least 4");
+    emp_assert(hardware->GetMemSize() >= 5, "Grade requires a memory size of at least 5");
     submitted = false;
-    submitted_val = 0;
+    submitted_val = "";
     // Configure inputs.
     if (hardware->GetCallStackSize()) {
         hardware_t::CallState & state = hardware->GetCurCallState();
@@ -125,7 +137,7 @@ void Experiment_Smallest::SetupSingle(org_t& org, const input_t& input){
     }
 }
 
-void Experiment_Smallest::SetupDilution(){
+void Experiment_Grade::SetupDilution(){
     if(!problems_loaded){
         std::cout << "Cannot dilute problems that have not been loaded. Terminating." << std::endl;
         exit(-1);
@@ -141,7 +153,7 @@ void Experiment_Smallest::SetupDilution(){
     }
 }
 
-void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
+void Experiment_Grade::SetupProblemDataCollectionFunctions(){
     program_stats.get_prog_behavioral_diversity = [this]() { 
         return emp::ShannonEntropy(validation_outputs); 
     };
@@ -150,7 +162,7 @@ void Experiment_Smallest::SetupProblemDataCollectionFunctions(){
     };
 }
 
-void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
+void Experiment_Grade::SetupSingleTest(org_t& org, size_t test_id){
     input_t & input = training_set.GetInput(test_id);
     cur_test_id = test_id;
     cur_input = input;
@@ -158,7 +170,7 @@ void Experiment_Smallest::SetupSingleTest(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
+void Experiment_Grade::SetupSingleValidation(org_t& org, size_t test_id){
     input_t & input = test_set.GetInput(test_id);
     cur_test_id = test_id;
     cur_input = input;
@@ -166,7 +178,7 @@ void Experiment_Smallest::SetupSingleValidation(org_t& org, size_t test_id){
     SetupSingle(org, input);
 }
 
-void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
+void Experiment_Grade::RunSingleTest(org_t& org, size_t test_id, size_t local_test_id){
     // Check for auto-pass cases
     if(training_set.GetInput(test_id).second){
         // Record the auto pass, still compute "actual" passes
@@ -203,7 +215,7 @@ void Experiment_Smallest::RunSingleTest(org_t& org, size_t test_id, size_t local
     }
 }
 
-Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, org_t& org, 
+Experiment::TestResult Experiment_Grade::RunSingleValidation(size_t org_id, org_t& org, 
     size_t test_id){
     // Check for auto-pass cases
     if(test_set.GetInput(test_id).second){
@@ -228,35 +240,49 @@ Experiment::TestResult Experiment_Smallest::RunSingleValidation(size_t org_id, o
     }
 }
 
-void Experiment_Smallest::ResetValidation(){
+void Experiment_Grade::ResetValidation(){
     validation_outputs.resize(POP_SIZE);
     for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
         validation_outputs[prog_id].resize(num_test_cases);
     }
 }  
 
-Experiment::hardware_t::Program Experiment_Smallest::GetKnownSolution(){
+Experiment::hardware_t::Program Experiment_Grade::GetKnownSolution(){
     emp::vector<emp::BitSet<TAG_WIDTH>> matrix = GenHadamardMatrix<TAG_WIDTH>();
     hardware_t::Program sol(inst_lib);
     
-    sol.PushInst("LoadNum1",    {matrix[0], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum2",    {matrix[1], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum3",    {matrix[2], matrix[7], matrix[7]});
-    sol.PushInst("LoadNum4",    {matrix[3], matrix[7], matrix[7]});
-    sol.PushInst("MakeVector",  {matrix[0], matrix[3], matrix[4]});
-    sol.PushInst("Foreach",     {matrix[5], matrix[4], matrix[7]});
-    sol.PushInst("TestNumLess", {matrix[5], matrix[0], matrix[6]});
-    sol.PushInst("If",          {matrix[6], matrix[7], matrix[7]});
-    sol.PushInst("CopyMem",     {matrix[5], matrix[0], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("Close",       {matrix[7], matrix[7], matrix[7]});
-    sol.PushInst("SubmitNum",   {matrix[0], matrix[7], matrix[7]});
+    sol.PushInst("LoadThreshA",        {matrix[0], matrix[8], matrix[8]});
+    sol.PushInst("LoadThreshB",        {matrix[1], matrix[8], matrix[8]});
+    sol.PushInst("LoadThreshC",        {matrix[2], matrix[8], matrix[8]});
+    sol.PushInst("LoadThreshD",        {matrix[3], matrix[8], matrix[8]});
+    sol.PushInst("LoadGrade",          {matrix[4], matrix[8], matrix[8]});
+    sol.PushInst("TestNumGreaterTEqu", {matrix[4], matrix[0], matrix[5]});
+    sol.PushInst("If",                 {matrix[5], matrix[8], matrix[8]});
+    sol.PushInst("Submit_A",          {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Return",           {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Close",              {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("TestNumGreaterTEqu", {matrix[4], matrix[1], matrix[5]});
+    sol.PushInst("If",                 {matrix[5], matrix[8], matrix[8]});
+    sol.PushInst("Submit_B",          {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Return",           {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Close",              {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("TestNumGreaterTEqu", {matrix[4], matrix[2], matrix[5]});
+    sol.PushInst("If",                 {matrix[5], matrix[8], matrix[8]});
+    sol.PushInst("Submit_C",          {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Return",           {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Close",              {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("TestNumGreaterTEqu", {matrix[4], matrix[3], matrix[5]});
+    sol.PushInst("If",                 {matrix[5], matrix[8], matrix[8]});
+    sol.PushInst("Submit_D",          {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Return",           {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Close",              {matrix[8], matrix[8], matrix[8]});
+    sol.PushInst("Submit_F",            {matrix[8], matrix[8], matrix[8]});
 
     return sol;
 }
  
-std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t> 
-            Experiment_Smallest::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
+std::pair<Experiment_Grade::input_t, Experiment_Grade::output_t> 
+            Experiment_Grade::LoadTestCaseFromLine(const emp::vector<std::string> & line) {
     input_t input;   
     output_t output; 
     // Load input.
@@ -264,18 +290,36 @@ std::pair<Experiment_Smallest::input_t, Experiment_Smallest::output_t>
     input.first[1] = std::atof(line[1].c_str());
     input.first[2] = std::atof(line[2].c_str());
     input.first[3] = std::atof(line[3].c_str());
+    input.first[4] = std::atof(line[4].c_str());
     input.second = false;
     // Load output.
-    output = std::atof(line[4].c_str());
+    if (line[5] == "Student has a A grade.") {
+      output = STR_A;
+    } else if (line[5] == "Student has a B grade.") {
+      output = STR_B;
+    } else if (line[5] == "Student has a C grade.") {
+      output = STR_C;
+    } else if (line[5] == "Student has a D grade.") {
+      output = STR_D;
+    } else if (line[5] == "Student has a F grade.") {
+      output = STR_F;
+    } else {
+      std::cout << "Error, invalid grade in test case: " << line[5] << std::endl;
+      exit(-1);
+    }
     emp_assert(output == GenCorrectOutput(input));
     return {input, output};
 }
 
-Experiment_Smallest::output_t Experiment_Smallest::GenCorrectOutput(input_t &input){
-    return *std::min_element(input.first.begin(), input.first.end());
+Experiment_Grade::output_t Experiment_Grade::GenCorrectOutput(input_t &input){
+    if      (input.first[4] >= input.first[0]) { return STR_A; }
+    else if (input.first[4] >= input.first[1]) { return STR_B; }
+    else if (input.first[4] >= input.first[2]) { return STR_C; }
+    else if (input.first[4] >= input.first[3]) { return STR_D; }
+    else { return STR_F; }
 }
 
-void Experiment_Smallest::SetupInstructions(){
+void Experiment_Grade::SetupInstructions(){
     // Add default instructions to instruction set.
     AddDefaultInstructions({"Add",
                           "Sub",
@@ -329,30 +373,42 @@ void Experiment_Smallest::SetupInstructions(){
                           "IsVec"
     });
     // -- Custom Instructions --
-    inst_lib->AddInst("LoadNum1", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum1(hw, inst);
+    inst_lib->AddInst("LoadThreshA", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadThreshA(hw, inst);
+    }, 1);
+    inst_lib->AddInst("LoadThreshB", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadThreshB(hw, inst);
+    }, 1);
+    inst_lib->AddInst("LoadThreshC", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadThreshC(hw, inst);
+    }, 1);
+    inst_lib->AddInst("LoadThreshD", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadThreshD(hw, inst);
+    }, 1);
+    inst_lib->AddInst("LoadGrade", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_LoadGrade(hw, inst);
     }, 1);
 
-    inst_lib->AddInst("LoadNum2", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum2(hw, inst);
+    inst_lib->AddInst("Submit_A", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_Submit_A(hw, inst);
     }, 1);
-
-    inst_lib->AddInst("LoadNum3", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum3(hw, inst);
+    inst_lib->AddInst("Submit_B", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_Submit_B(hw, inst);
     }, 1);
-
-    inst_lib->AddInst("LoadNum4", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_LoadNum4(hw, inst);
+    inst_lib->AddInst("Submit_C", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_Submit_C(hw, inst);
     }, 1);
-
-    inst_lib->AddInst("SubmitNum", [this](hardware_t & hw, const inst_t & inst) {
-        this->Inst_SubmitNum(hw, inst);
+    inst_lib->AddInst("Submit_D", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_Submit_D(hw, inst);
+    }, 1);
+    inst_lib->AddInst("Submit_F", [this](hardware_t & hw, const inst_t & inst) {
+        this->Inst_Submit_F(hw, inst);
     }, 1);
 
 
 }
 
-void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
+void Experiment_Grade::Inst_LoadThreshA(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -363,7 +419,7 @@ void Experiment_Smallest::Inst_LoadNum1(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[0]);
 }
 
-void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
+void Experiment_Grade::Inst_LoadThreshB(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -374,7 +430,7 @@ void Experiment_Smallest::Inst_LoadNum2(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[1]);
 }
 
-void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
+void Experiment_Grade::Inst_LoadThreshC(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -385,7 +441,7 @@ void Experiment_Smallest::Inst_LoadNum3(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[2]);
 }
 
-void Experiment_Smallest::Inst_LoadNum4(hardware_t & hw, const inst_t & inst) {
+void Experiment_Grade::Inst_LoadThreshD(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
@@ -396,17 +452,40 @@ void Experiment_Smallest::Inst_LoadNum4(hardware_t & hw, const inst_t & inst) {
     wmem.Set(posA, cur_input.first[3]);
 }
 
-void Experiment_Smallest::Inst_SubmitNum(hardware_t & hw, const inst_t & inst) {
+void Experiment_Grade::Inst_LoadGrade(hardware_t & hw, const inst_t & inst) {
     hardware_t::CallState & state = hw.GetCurCallState();
     hardware_t::Memory & wmem = state.GetWorkingMem();
 
     // Find arguments
-    size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], 
-        hw.GetMinTagSpecificity(), hardware_t::MemPosType::NUM);
+    size_t posA = hw.FindBestMemoryMatch(wmem, inst.arg_tags[0], hw.GetMinTagSpecificity());
     if (!hw.IsValidMemPos(posA)) return;
 
+    wmem.Set(posA, cur_input.first[4]);
+}
+
+void Experiment_Grade::Inst_Submit_A(hardware_t & hw, const inst_t & inst) {
     submitted = true;
-    submitted_val = (int)wmem.AccessVal(posA).GetNum();
+    submitted_val = STR_A;
+}
+
+void Experiment_Grade::Inst_Submit_B(hardware_t & hw, const inst_t & inst) {
+    submitted = true;
+    submitted_val = STR_B;
+}
+
+void Experiment_Grade::Inst_Submit_C(hardware_t & hw, const inst_t & inst) {
+    submitted = true;
+    submitted_val = STR_C;
+}
+
+void Experiment_Grade::Inst_Submit_D(hardware_t & hw, const inst_t & inst) {
+    submitted = true;
+    submitted_val = STR_D;
+}
+
+void Experiment_Grade::Inst_Submit_F(hardware_t & hw, const inst_t & inst) {
+    submitted = true;
+    submitted_val = STR_F;
 }
 
 

@@ -60,7 +60,7 @@ class Experiment_For_Loop_Index : public Experiment{
     
         // Variables for a specific run
         size_t cur_test_id;
-        emp::vector<int> submitted_vec;
+        output_t submitted_vec;
         bool submitted;
         input_t cur_input;
         output_t cur_output;
@@ -108,7 +108,7 @@ void Experiment_For_Loop_Index::SetupSingle(org_t& org, const input_t& input){
     hardware->Reset();
     hardware->SetProgram(org.GetGenome());
     hardware->CallModule(call_tag, MIN_TAG_SPECIFICITY, true, false); 
-    emp_assert(hardware->GetMemSize() >= 4, "Smallest requires a memory size of at least 4");
+    emp_assert(hardware->GetMemSize() >= 3, "For loop index requires a memory size of at least 3");
     submitted = false;
     submitted_vec = emp::vector<int>();
     // Configure inputs.
