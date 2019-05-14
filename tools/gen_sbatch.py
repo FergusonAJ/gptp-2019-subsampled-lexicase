@@ -1,8 +1,8 @@
 from shared import *
 
 treatments = [trt_cohort, trt_reduced, trt_downsampled]
-sizes = [size_10, size_100]
-dilutions = [dil_0_0, dil_0_5, dil_0_9]
+sizes = [size_100, size_50, size_25, size_10, size_5]
+dilutions = [dil_0_0]
 
 with open('sbatch_run.sh', 'w') as fp:
     fp.write('#!/bin/bash\n')

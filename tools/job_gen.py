@@ -9,8 +9,10 @@ sizes = [size_10, size_100, size_25, size_50, size_5]
 # Dilution rates
 dilutions = [dil_0_0, dil_0_5, dil_0_75, dil_0_9, dil_0_95]
 
+seed_start_offset = 17000
+
 with open('make_dirs.sh', 'w') as fp:
-    fp.write('!# /bin/bash\n')
+    fp.write('#! /bin/bash\n')
     for trt in treatments:
         fp.write('mkdir ' \
                 + base_dir \
@@ -35,12 +37,13 @@ with open('make_dirs.sh', 'w') as fp:
 for trt in treatments:
      for size in sizes:
         for dil in dilutions:
+            seed = seed_start_offset + trt.seed_offset + size.seed_offset + dil.seed_offset
             with open(output_dir + trt.name + '__' + str(size.num_tests) + '_tests__'\
                         + dil.get_name() + '_dilution.sb', 'w') as fp:
                 fp.write('#!/bin/bash\n')
                 fp.write('########## Define Resources Needed with SBATCH Lines ##########\n')
                 fp.write('\n')
-                fp.write('#SBATCH --time=72:00:00         # limit of wall clock time - how long the job will run (same as -t)\n')
+                fp.write('#SBATCH --time=12:00:00         # limit of wall clock time - how long the job will run (same as -t)\n')
                 fp.write('#SBATCH --array=1-50\n')
                 fp.write('#SBATCH --mem=4G                # memory required per node - amount of memory (in bytes)\n')
                 fp.write('#SBATCH --job-name ls' + trt.initial + str(size.num_tests) + '_' + dil.get_name() +'     # you can give your job a name for easier identification (same as -J)\n')
@@ -51,7 +54,7 @@ for trt in treatments:
                 fp.write('\n')
                 fp.write('##################################\n')
                 fp.write('# Setup random seed info\n')
-                fp.write('PROBLEM_SEED_OFFSET=17000\n')
+                fp.write('PROBLEM_SEED_OFFSET=' + str(seed) + '\n')
                 fp.write('\n')
                 fp.write('TREATMENT=' + str(trt.config_id) + '\n')
                 fp.write('TREATMENT_NAME="' + trt.name + '"\n')
@@ -68,10 +71,12 @@ for trt in treatments:
                 fp.write('\n')
                 fp.write('##################################\n')
                 fp.write('# Setup relevant directories\n')
-                fp.write('OUTPUT_DIR=/mnt/gs18/scratch/users/fergu358/lexicase/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}\n')
+                fp.write('OUTPUT_DIR=/mnt/gs18/scratch/users/fergu358/gptp2019/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}\n')
                 fp.write('\n')
-                fp.write('echo "./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS}"\n')
+                fp.write('echo \"mkdir ${OUTPUT_DIR}\"\n')
+                fp.write('mkdir ${OUTPUT_DIR}\n')
+                fp.write('echo "./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS} > /mnt/gs18/scratch/users/fergu358/gptp2019/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}/slurm.out\"\n')
                 fp.write('\n')
-                fp.write('./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS}\n')
+                fp.write('./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS} > /mnt/gs18/scratch/users/fergu358/gptp2019/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}/slurm.out\n')
 
 
