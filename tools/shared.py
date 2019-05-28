@@ -1,5 +1,14 @@
 #Classes and instances to be used in several scripts
 
+class Problem:
+    def __init__(self, name, prob_id, initial, max_size, eval_time, test_case_factor, seed_offset):
+        self.name = name
+        self.prob_id = prob_id
+        self.initial = initial
+        self.max_size = max_size
+        self.eval_time = eval_time
+        self.test_case_factor = test_case_factor
+        self.seed_offset = seed_offset
 class TreatmentInfo:
     def __init__(self, name, config_id, seed_offset):
         self.name = name
@@ -19,12 +28,23 @@ class DilutionInfo:
     def get_name(self):
         return self.val.replace('.', '_')
 
-base_dir = "/mnt/gs18/scratch/users/fergu358/gptp2019/"        
-if base_dir[-1] != '/':
-    base_dir += '/'
-output_dir = "../"        
+#Define our directories
+scratch_dir = '/mnt/gs18/scratch/users/fergu358/gptp2019/'
+if scratch_dir[-1] != '/':
+    scratch_dir += '/'
+output_dir = './jobs'        
 if output_dir[-1] != '/':
     output_dir += '/'
+data_dir = './data'
+if data_dir[-1] != '/':
+    data_dir += '/'
+
+# Problems
+prob_smallest =     Problem('smallest',               0, 'S',    64,  64, 1, 100000)
+prob_for_loop =     Problem('for-loop-index',         1, 'FL',  128, 256, 1, 200000)
+prob_median =       Problem('median',                 2, 'M',    64,  64, 1, 300000)
+prob_cmp_str_lens = Problem('compare-string-lengths', 3, 'CSL',  64,  64, 1, 400000)
+prob_grade =        Problem('grade',                  4, 'G',    64,  64, 2, 500000)
 
 #Treatments
 trt_reduced = TreatmentInfo('reduced', 0, 10000)
@@ -64,3 +84,10 @@ dil_lookup['0_50000'] = dil_0_5
 dil_lookup['0_75000'] = dil_0_75
 dil_lookup['0_90000'] = dil_0_9
 dil_lookup['0_95000'] = dil_0_95
+
+prob_lookup = {}
+prob_lookup['smallest'] = prob_smallest
+prob_lookup['for-loop-index'] = prob_for_loop
+prob_lookup['median'] = prob_median
+prob_lookup['compare-string-lengths'] = prob_cmp_str_lens
+prob_lookup['grade'] = prob_grade

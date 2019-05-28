@@ -1,76 +1,59 @@
 from shared import *
 
-# Problems 
-problems = [prob_grade]#prob_smallest, prob_median, prob_cmp_str_lens, prob_grade, prob_for_loop]
+output_dir = './unfinished_gptp/'
+if output_dir[-1] != '/':
+    output_dir += '/'
 
-# Treatments
-treatments = [trt_cohort, trt_reduced, trt_downsampled]
+jobs_to_run = []
+with open('./tools/unfinished_gptp.csv', 'r') as fp:
+    header = fp.readline().strip().split(',')
+    col_map = {}
+    for i in range(len(header)):
+        col_map[header[i]] = i
+    for line in fp:
+        line = line.strip()    
+        L = line.split(',')
+        prob = prob_lookup[L[col_map['problem']]]
+        trt = trt_lookup[L[col_map['treatment']]]
+        size = size_lookup[int(L[col_map['num_tests']])]
+        dil = dil_lookup[L[col_map['dilution']]]
+        replicate_id = int(L[col_map['replicate_id']])
+        jobs_to_run.append((prob, trt, size, dil, replicate_id))
+for x in jobs_to_run:
+    print(x)
+print(len(jobs_to_run))
 
-# Cohort (or equiv.) size
-sizes = [size_100, size_10]#size_10, size_100, size_25, size_50, size_5]
 
-# Dilution rates
-dilutions = [dil_0_0, dil_0_5, dil_0_75, dil_0_9, dil_0_95]
+def get_filename(prob, trt, size, dil, replicate_id):
+    return output_dir + \
+           prob.name + '__' + \
+           trt.name +  '__' + \
+           str(size.num_tests) + \
+           '_tests__' + \
+           dil.get_name() + \
+           '_dilution__' + \
+           str(replicate_id) + \
+           '.sb'
+
 
 seed_start_offset = 17000
 
-print('Creating make_dirs.sh...')
-with open('make_dirs.sh', 'w') as fp:
-    fp.write('#! /bin/bash\n')
-    for prob in problems:
-        fp.write('mkdir ' \
-                + scratch_dir \
-                + prob.name
-                + '\n')
-        for trt in treatments:
-            fp.write('mkdir ' \
-                    + scratch_dir \
-                    + prob.name \
-                    + '/' \
-                    + trt.name \
-                    + '\n')
-            for size in sizes:
-                fp.write('mkdir ' \
-                        + scratch_dir \
-                        + prob.name \
-                        + '/' \
-                        + trt.name \
-                        + '/' \
-                        + str(size.num_tests * prob.test_case_factor) \
-                        + '\n')
-                for dil in dilutions:
-                    fp.write('mkdir ' \
-                            + scratch_dir \
-                            + prob.name \
-                            + '/' \
-                            + trt.name \
-                            + '/' \
-                            + str(size.num_tests * prob.test_case_factor) \
-                            + '/' \
-                            + dil.get_name() \
-                            + '\n')
-print('make_dirs.sh finished!')
-
-def write_job_file(prob, trt, size, dil):
+def write_redo_file(prob, trt, size, dil, replicate_id):
     seed = seed_start_offset + \
            prob.seed_offset + \
            trt.seed_offset + \
            size.seed_offset + \
-           dil.seed_offset
-
-    with open(output_dir + \
-                 prob.name + '__' + \
-                 trt.name +  '__' + \
-                 str(size.num_tests) + \
-                 '_tests__'\
-                 + dil.get_name() + \
-                 '_dilution.sb', 'w') as fp:
+           dil.seed_offset + \
+           replicate_id
+    print(seed)
+    filename = get_filename(prob, trt, size, dil, replicate_id)
+    with open(filename, 'w') as fp:
         fp.write('#!/bin/bash\n')
         fp.write('########## Define Resources Needed with SBATCH Lines ##########\n')
         fp.write('\n')
-        fp.write('#SBATCH --time=24:00:00         ' + \
+        fp.write('#SBATCH --time=48:00:00         ' + \
                  '# limit of wall clock time - how long the job will run (same as -t)\n')
-        fp.write('#SBATCH --array=1-50\n')
+        fp.write('#SBATCH --array=1-1\n')
         fp.write('#SBATCH --mem=4G                ' + \
                  '# memory required per node - amount of memory (in bytes)\n')
         fp.write('#SBATCH --job-name ls' + prob.initial + '_' + trt.initial + \
@@ -140,17 +123,10 @@ def write_job_file(prob, trt, size, dil):
                 '> ${OUTPUT_DIR}/slurm.out'
         fp.write('echo \"' + cmd + '\"\n')
         fp.write(cmd + '\n')
-        #fp.write('echo "./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS} > /mnt/gs18/scratch/users/fergu358/gptp2019/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}/slurm.out\"\n')
-        #fp.write('\n')
-        #fp.write('./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS} > /mnt/gs18/scratch/users/fergu358/gptp2019/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}/slurm.out\n')
-
-        
-print('Writing all job files!')
-for prob in problems:
-    print('Preparing files for ' + prob.name + ' jobs.')
-    for trt in treatments:
-        for size in sizes:
-            for dil in dilutions:
-                write_job_file(prob, trt, size, dil)
-    print(prob.name + ' job files created!')
+       
+with open('./unfinished_run.sh', 'w') as fp:
+    for job in jobs_to_run:
+        fp.write('sbatch ' + get_filename(*job) + '\n')
+        write_redo_file(*job)
+ 
 print('Finished! Goodbye!')
