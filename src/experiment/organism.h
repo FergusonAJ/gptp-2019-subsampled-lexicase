@@ -31,7 +31,8 @@ protected:
     emp::vector<double> local_score_vec; // Only covers the cases to be encountered
     emp::vector<TestStatus> actual_local_status_vec; // Only covers the cases to be encountered
     emp::vector<double> actual_local_score_vec; // Only covers the cases to be encountered
-
+    emp::vector<uint8_t> local_seen_vec; // For counting "optimized" evaluations
+    size_t num_evals; //Used in conjunction with local_seen_vec to get the actual evaluation count
 public:
     Organism(){
     }
@@ -68,6 +69,8 @@ public:
         actual_local_status_vec.resize(num_local_cases, TestStatus::UNTESTED);
         actual_local_score_vec.clear();
         actual_local_score_vec.resize(num_local_cases, 0.0);
+        local_seen_vec.resize(num_local_cases, 0);
+        num_evals = 0;
     }
 
     void Record(size_t test_id, bool pass, bool submitted, double score){
@@ -147,6 +150,10 @@ public:
 
     double GetLocalScore(size_t local_test_id){
         emp_assert(local_test_id < local_score_vec.size(), "Trying to get invalid local score!");
+        if(!local_seen_vec[local_test_id]){
+            local_seen_vec[local_test_id] = 1;
+            num_evals++;
+        }   
         return local_score_vec[local_test_id];
     }
 
@@ -196,6 +203,10 @@ public:
     
     size_t GetNumActualSubmissions(){
         return num_actual_submissions;
+    }
+    
+    size_t GetNumEvals(){
+        return num_evals;
     }
 };
 

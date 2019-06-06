@@ -53,6 +53,9 @@ public:
         // Generic stuff
         std::function<size_t(void)> get_id;
         std::function<double(void)> get_fitness;
+        std::function<size_t(void)> get_update;
+        std::function<size_t(void)> get_evaluations;
+        std::function<size_t(void)> get_actual_evaluations;
 
         // Fitness evaluation stats
         std::function<double(void)> get_fitness_eval__total_score;
@@ -164,6 +167,7 @@ protected:
     size_t validation_passes;
     size_t validation_fails;
     size_t validation_submissions;
+    size_t actual_current_evals;
     emp::Ptr<emp::DataFile> solution_file;
     emp::Ptr<emp::DataFile> phen_diversity_file;
     emp::Ptr<emp::Systematics<org_t, org_gen_t>> org_genotypic_systematics;
@@ -529,24 +533,11 @@ void Experiment::SetupDataCollection(){
     SetupDataCollectionFunctions();
         
     // Define helper functions
-    std::function<size_t(void)> get_update = [this]() { return world->GetUpdate(); };
-    std::function<double(void)> get_evaluations = [this]() {
-        if(treatment_type == REDUCED_LEXICASE)
-           return (double)(world->GetUpdate() * POP_SIZE * NUM_TESTS); 
-        else if(treatment_type == COHORT_LEXICASE)
-            return (double)(world->GetUpdate() * PROG_COHORT_SIZE * TEST_COHORT_SIZE * num_cohorts); 
-        else if(treatment_type == DOWNSAMPLED_LEXICASE)
-            return (double)(world->GetUpdate() * POP_SIZE * DOWNSAMPLED_NUM_TESTS);
-        else if(treatment_type == TRUNCATED_LEXICASE){
-            return (double)(world->GetUpdate() * POP_SIZE * NUM_TESTS); 
-        }
-        else
-            return 0.0;
-    };
     // Create solution file
     solution_file = emp::NewPtr<emp::DataFile>(OUTPUT_DIR + "/solutions.csv");
-    solution_file->AddFun(get_update, "update");
-    solution_file->AddFun(get_evaluations, "evaluations");
+    solution_file->AddFun(program_stats.get_update, "update");
+    solution_file->AddFun(program_stats.get_evaluations, "evaluations");
+    solution_file->AddFun(program_stats.get_actual_evaluations, "actual_evaluations");
     solution_file->AddFun(program_stats.get_id, "program_id");
     solution_file->AddFun(program_stats.get_program_len, "program_len");
     solution_file->AddFun(program_stats.get_program, "program");
@@ -556,8 +547,9 @@ void Experiment::SetupDataCollection(){
 
     // Setup phenotypic diversity tracking file
     phen_diversity_file = emp::NewPtr<emp::DataFile>(OUTPUT_DIR + "/phenotypic_diversity.csv");
-    phen_diversity_file->AddFun(get_update, "update");
-    phen_diversity_file->AddFun(get_evaluations, "evaluations");
+    phen_diversity_file->AddFun(program_stats.get_update, "update");
+    phen_diversity_file->AddFun(program_stats.get_evaluations, "evaluations");
+    phen_diversity_file->AddFun(program_stats.get_actual_evaluations, "actual_evaluations");
     // Behavioral Diversity
     phen_diversity_file->AddFun(program_stats.get_prog_behavioral_diversity, "behavioral_diversity",
         "Shannon entropy of program behaviors");
@@ -645,7 +637,8 @@ void Experiment::SetupDataCollection(){
         "variance_sparse_pairwise_distances", 
         "Number sparse taxa");
 
-    org_gen_sys_file.AddFun(get_evaluations, "evaluations");
+    org_gen_sys_file.AddFun(program_stats.get_evaluations, "evaluations");
+    org_gen_sys_file.AddFun(program_stast.get_actual_evaluations, "actual_evaluations");
 
     org_gen_sys_file.PrintHeaderKeys();
 
@@ -663,7 +656,26 @@ void Experiment::SetupDataCollection(){
 
 void Experiment::SetupDataCollectionFunctions(){
     // Setup program stats functions.
-
+    
+    //General
+    program_stats.get_update = [this]() { return world->GetUpdate(); };
+    program_stats.get_evaluations = [this]() {
+        size_t updates = world->GetUpdate() + 1;
+        if(treatment_type == REDUCED_LEXICASE)
+           return (size_t)(updates * POP_SIZE * NUM_TESTS); 
+        else if(treatment_type == COHORT_LEXICASE)
+            return (size_t)(updates * PROG_COHORT_SIZE * TEST_COHORT_SIZE * num_cohorts); 
+        else if(treatment_type == DOWNSAMPLED_LEXICASE)
+            return (size_t)(updates * POP_SIZE * DOWNSAMPLED_NUM_TESTS);
+        else if(treatment_type == TRUNCATED_LEXICASE){
+            return (size_t)(updates * POP_SIZE * NUM_TESTS); 
+        }
+        else
+            return (size_t)0;
+    };
+    program_stats.get_actual_evaluations = [this]() {
+        return actual_current_evals;
+    };
     // Training
     program_stats.get_id = [this]() { 
         return stats_focus_org_id; 
@@ -926,6 +938,9 @@ void Experiment::UpdateRecords(){
     current_best_score = 0.0;
     actual_current_best_score = 0.0;
     for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+        actual_current_evals += world->GetOrg(prog_id).GetNumEvals();
+    }
+    for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
         emp_assert(world->IsOccupied(prog_id));
         org_t& cur_org = world->GetOrg(prog_id);
         const size_t pass_total = cur_org.GetNumPasses();
@@ -989,6 +1004,9 @@ void Experiment::SavePopSnapshot(){
     file.AddFun(program_stats.get_id, "program_id", "Program ID");
 
     file.AddFun(program_stats.get_fitness, "fitness");
+    file.AddFun(program_stats.get_update, "updates");
+    file.AddFun(program_stats.get_evaluations, "evaluations");
+    file.AddFun(program_stats.get_actual_evaluations, "actual_evaluations");
     file.AddFun(program_stats.get_fitness_eval__total_score, "total_score__fitness_eval");
     file.AddFun(program_stats.get_fitness_eval__num_passes, "num_passes__fitness_eval");
     file.AddFun(program_stats.get_fitness_eval__num_fails, "num_fails__fitness_eval");
