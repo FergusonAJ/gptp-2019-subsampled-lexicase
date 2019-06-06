@@ -11,7 +11,8 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(TREATMENT, size_t, 1, 
         "0 for Reduced Lexicase, " 
         " 1 for Cohort Lexicase, "
-        " 2 for Downsampled Lexicase "),
+        " 2 for Downsampled Lexicase "
+        " 3 for Truncated Lexicase"),
     VALUE(POP_SIZE, size_t, 1000, "The size of our evolving population"),
     VALUE(GENERATIONS, size_t, 1000, "The number of generations to simulate"),
     VALUE(DILUTION_PCT, double, 0.0, "The percentage of tests that will be auto-pass "
@@ -73,6 +74,12 @@ EMP_BUILD_CONFIG(ExperimentConfig,
     VALUE(DOWNSAMPLED_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking random " 
         "remaining organism. (0 for no limit, i.e., use as many cases as needed.)"),
     VALUE(DOWNSAMPLED_NUM_TESTS, size_t, 10, "The number of the training cases to use each update"),
+    
+    // Truncated Lexicase Group
+    GROUP(TRUNCATED_LEXICASE_GROUP, "Settings specific to experiments using truncated lexicase "
+        "(See TREATMENT)"),
+    VALUE(TRUNCATED_MAX_FUNCS, size_t, 0, "Maximum number of tests to check before taking random " 
+        "remaining organism. (0 for no limit, i.e., use as many cases as needed.)"),
     
     // Data Collection Group 
     GROUP(DATA_COLLECTION_GROUP, "Settings specific to data collection."),

@@ -46,7 +46,8 @@ public:
     enum TreatmentType{
         REDUCED_LEXICASE = 0,
         COHORT_LEXICASE = 1, 
-        DOWNSAMPLED_LEXICASE = 2
+        DOWNSAMPLED_LEXICASE = 2,
+        TRUNCATED_LEXICASE = 3
     };
     struct ProgramStats{
         // Generic stuff
@@ -205,6 +206,8 @@ protected:
     // Downsampled Lexicase
     size_t DOWNSAMPLED_MAX_FUNCS;
     size_t DOWNSAMPLED_NUM_TESTS;
+    // Truncated Lexicase
+    size_t TRUNCATED_MAX_FUNCS;
     // Data Collection 
     std::string OUTPUT_DIR;
     size_t SNAPSHOT_INTERVAL;
@@ -326,6 +329,8 @@ void Experiment::CopyConfig(const ExperimentConfig& config){
     // Downsampled Lexicase
     DOWNSAMPLED_MAX_FUNCS = config.DOWNSAMPLED_MAX_FUNCS();
     DOWNSAMPLED_NUM_TESTS = config.DOWNSAMPLED_NUM_TESTS();
+    // Truncated Lexicase
+    TRUNCATED_MAX_FUNCS = config.TRUNCATED_MAX_FUNCS();
     // Data Collection
     OUTPUT_DIR = config.OUTPUT_DIR();
     SNAPSHOT_INTERVAL = config.SNAPSHOT_INTERVAL();
@@ -423,6 +428,21 @@ void Experiment::SetupEvaluation(){
             max_passes = DOWNSAMPLED_NUM_TESTS;
             break;
         }
+        case TRUNCATED_LEXICASE: {
+            std::cout << "Setting up TRUNCATED Lexicase evaluation" << std::endl;
+            // Create id arrays to randomize training cases (only one time)
+            program_ids.resize(POP_SIZE);
+            for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+                program_ids[prog_id] = prog_id;
+            }
+            test_case_ids.resize(num_training_cases);
+            for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
+                test_case_ids[test_id] = test_id;
+            }
+            // To be a potential solution, a program must solve the given number of training cases
+            max_passes = num_training_cases;
+            break;
+        }
         default: {
             std::cout << "Error in evaluation setup: Invalid treament type!" << std::endl;
             exit(-1);
@@ -458,6 +478,17 @@ void Experiment::SetupSelection(){
         case DOWNSAMPLED_LEXICASE: {
             std::cout << "Setting up DOWNSAMPLED Lexicase selection" << std::endl;
             for(size_t local_test_id = 0; local_test_id < DOWNSAMPLED_NUM_TESTS; ++local_test_id){
+                lexicase_fit_funcs.push_back(
+                    [local_test_id](org_t& org){
+                        return org.GetLocalScore(local_test_id);
+                    }
+                );        
+            }
+            break;
+        }
+        case TRUNCATED_LEXICASE: {
+            std::cout << "Setting up TRUNCATED Lexicase selection" << std::endl;
+            for(size_t local_test_id = 0; local_test_id < num_training_cases; ++local_test_id){
                 lexicase_fit_funcs.push_back(
                     [local_test_id](org_t& org){
                         return org.GetLocalScore(local_test_id);
@@ -506,6 +537,9 @@ void Experiment::SetupDataCollection(){
             return (double)(world->GetUpdate() * PROG_COHORT_SIZE * TEST_COHORT_SIZE * num_cohorts); 
         else if(treatment_type == DOWNSAMPLED_LEXICASE)
             return (double)(world->GetUpdate() * POP_SIZE * DOWNSAMPLED_NUM_TESTS);
+        else if(treatment_type == TRUNCATED_LEXICASE){
+            return (double)(world->GetUpdate() * POP_SIZE * NUM_TESTS); 
+        }
         else
             return 0.0;
     };
@@ -813,6 +847,20 @@ void Experiment::Evaluate(){
             }
             break;
         }
+        case TRUNCATED_LEXICASE: {
+            // Handle one program at a time
+            for(size_t prog_id = 0; prog_id < POP_SIZE; ++prog_id){
+                org_t & cur_prog = world->GetOrg(prog_id);
+                cur_prog.Reset(num_training_cases, num_training_cases);
+                // Test against *all* test cases
+                for(size_t test_id = 0; test_id < num_training_cases; ++test_id){
+                    // Do test
+                    SetupSingleTest(cur_prog, test_case_ids[test_id]);
+                    RunSingleTest(cur_prog, test_case_ids[test_id], test_id); 
+                } 
+            }
+            break;
+        }
         default: {
             std::cout << "Error in evaluation: Invalid treament type!" << std::endl;
             exit(-1);
@@ -857,6 +905,13 @@ void Experiment::Select(){
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 DOWNSAMPLED_MAX_FUNCS);
+            break;
+        }
+        case TRUNCATED_LEXICASE: {
+            emp::LexicaseSelectWORKAROUND(*world,
+                                lexicase_fit_funcs, 
+                                POP_SIZE,
+                                TRUNCATED_MAX_FUNCS);
             break;
         }
         default: {
