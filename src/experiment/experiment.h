@@ -884,7 +884,7 @@ void Experiment::Evaluate(){
 void Experiment::Select(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
-            emp::LexicaseSelectWORKAROUND(*world,
+            emp::LexicaseSelect(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 LEXICASE_MAX_FUNCS);
@@ -913,14 +913,14 @@ void Experiment::Select(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
-            emp::LexicaseSelectWORKAROUND(*world,
+            emp::LexicaseSelect(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 DOWNSAMPLED_MAX_FUNCS);
             break;
         }
         case TRUNCATED_LEXICASE: {
-            emp::LexicaseSelectWORKAROUND(*world,
+            emp::LexicaseSelect(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 TRUNCATED_MAX_FUNCS);
