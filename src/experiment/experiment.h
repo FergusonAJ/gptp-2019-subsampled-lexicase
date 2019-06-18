@@ -558,9 +558,7 @@ void Experiment::SetupDataCollection(){
         "unique_behavioral_phenotypes", "Unique behavioral profiles in program population");
     phen_diversity_file->PrintHeaderKeys();
    
-    //TODO: Setup systematics tracking
     // Setup program systematics
-    /*
     org_genotypic_systematics = 
         emp::NewPtr<emp::Systematics<org_t, org_gen_t>>([](const org_t & o) { 
             return o.GetGenome(); 
@@ -638,7 +636,7 @@ void Experiment::SetupDataCollection(){
         "Number sparse taxa");
 
     org_gen_sys_file.AddFun(program_stats.get_evaluations, "evaluations");
-    org_gen_sys_file.AddFun(program_stast.get_actual_evaluations, "actual_evaluations");
+    org_gen_sys_file.AddFun(program_stats.get_actual_evaluations, "actual_evaluations");
 
     org_gen_sys_file.PrintHeaderKeys();
 
@@ -651,7 +649,6 @@ void Experiment::SetupDataCollection(){
         }, 
         "program", 
         "Program");
-    */
 }
 
 void Experiment::SetupDataCollectionFunctions(){
@@ -972,14 +969,12 @@ void Experiment::UpdateRecords(){
         } 
     }
     
-    /*
     // Track most recent common ancestor
     emp::Ptr<org_taxon_t> cur_taxa = org_genotypic_systematics->GetMRCA();
     if (cur_taxa != mrca_taxa_ptr) {
       ++mrca_changes;
       mrca_taxa_ptr = cur_taxa;
     }
-    */
     if(cur_update % SNAPSHOT_INTERVAL == 0 || update_first_solution_found == cur_update || 
             cur_update >= GENERATIONS){
         SavePopSnapshot();
@@ -1041,11 +1036,8 @@ void Experiment::SavePopSnapshot(){
     phen_diversity_file->Update();
     // Snapshot phylogeny
     
-    //TODO: Hook up systematics
-    /*
     org_genotypic_systematics->Snapshot(snapshot_dir + 
-            "/program_phylogeny_" + emp::to_string((int)prog_world->GetUpdate()) + ".csv");
-    */
+            "/program_phylogeny_" + emp::to_string((int)world->GetUpdate()) + ".csv");
 }
 
 void Experiment::Update(){
