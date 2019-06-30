@@ -1,4 +1,5 @@
-EMP_DIR := ../../tools/empirical_memic_model/Empirical/source# Needs to be the memic_model branch of https://github.com/emilydolson/Empirical/
+EMP_DIR := ../../tools/empirical_oee/Empirical/source# Needs to be the OEE branch of 
+    #https://github.com/amlalejini/Empirical/
 PARSER_DIR := ../../tools/csv-parser
 
 CXX := g++-8 
