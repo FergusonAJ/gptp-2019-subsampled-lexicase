@@ -14,63 +14,44 @@ dilutions = [dil_0_0]
 
 seed_start_offset = 17000
 
-print('Creating make_dirs.sh...')
-with open('make_dirs.sh', 'w') as fp:
-    fp.write('#! /bin/bash\n')
-    for prob in problems:
-        fp.write('mkdir ' \
-                + scratch_dir \
-                + prob.name
-                + '\n')
-        for trt in treatments:
-            fp.write('mkdir ' \
-                    + scratch_dir \
-                    + prob.name \
-                    + '/' \
-                    + trt.name \
-                    + '\n')
-            for size in sizes:
-                fp.write('mkdir ' \
-                        + scratch_dir \
-                        + prob.name \
-                        + '/' \
-                        + trt.name \
-                        + '/' \
-                        + str(size.num_tests * prob.test_case_factor) \
-                        + '\n')
-                for dil in dilutions:
-                    fp.write('mkdir ' \
-                            + scratch_dir \
-                            + prob.name \
-                            + '/' \
-                            + trt.name \
-                            + '/' \
-                            + str(size.num_tests * prob.test_case_factor) \
-                            + '/' \
-                            + dil.get_name() \
-                            + '\n')
-print('make_dirs.sh finished!')
 
-def write_job_file(prob, trt, size, dil):
+def write_job_file(prob, trt, size, dil, out_dir = None, extra_seed = None, \
+        array_size = 50, hours = 24):
     seed = seed_start_offset + \
            prob.seed_offset + \
            trt.seed_offset + \
            size.seed_offset + \
            dil.seed_offset
-
-    with open(output_dir + \
-                 prob.name + '__' + \
-                 trt.name +  '__' + \
-                 str(size.num_tests) + \
-                 '_tests__'\
-                 + dil.get_name() + \
-                 '_dilution.sb', 'w') as fp:
+    if out_dir == None:
+        out_dir = output_dir
+    filename = ''
+    if extra_seed == None:
+        filename = out_dir + \
+                prob.name + '__' + \
+                trt.name +  '__' + \
+                str(size.num_tests) + \
+                '_tests__'\
+                + dil.get_name() + \
+                '_dilution.sb'
+    else:
+        seed += extra_seed
+        filename = out_dir + \
+                prob.name + '__' + \
+                trt.name +  '__' + \
+                str(size.num_tests) + \
+                '_tests__' + \
+                dil.get_name() + \
+                '_dilution__' + \
+                str(extra_seed) + \
+                '.sb'
+    
+    with open(filename, 'w') as fp:
         fp.write('#!/bin/bash\n')
         fp.write('########## Define Resources Needed with SBATCH Lines ##########\n')
         fp.write('\n')
-        fp.write('#SBATCH --time=24:00:00         ' + \
+        fp.write('#SBATCH --time=' + str(hours) + ':00:00         ' + \
                  '# limit of wall clock time - how long the job will run (same as -t)\n')
-        fp.write('#SBATCH --array=1-50\n')
+        fp.write('#SBATCH --array=1-' + str(array_size) + '\n')
         fp.write('#SBATCH --mem=4G                ' + \
                  '# memory required per node - amount of memory (in bytes)\n')
         fp.write('#SBATCH --job-name ls' + prob.initial + '_' + trt.initial + \
@@ -146,13 +127,51 @@ def write_job_file(prob, trt, size, dil):
         #fp.write('\n')
         #fp.write('./gptp2019 -SEED ${SEED} -TREATMENT ${TREATMENT} -OUTPUT_DIR ${OUTPUT_DIR} -PROG_COHORT_SIZE ${PROG_COHORT_SIZE} -TEST_COHORT_SIZE ${NUM_TESTS} -NUM_TESTS ${NUM_TESTS} -DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} -DILUTION_PCT ${DILUTION_PCT} -GENERATIONS ${GENERATIONS} > /mnt/gs18/scratch/users/fergu358/gptp2019/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}/slurm.out\n')
 
-        
-print('Writing all job files!')
-for prob in problems:
-    print('Preparing files for ' + prob.name + ' jobs.')
-    for trt in treatments:
-        for size in sizes:
-            for dil in dilutions:
-                write_job_file(prob, trt, size, dil)
-    print(prob.name + ' job files created!')
-print('Finished! Goodbye!')
+if __name__ == '__main__':        
+    print('Creating make_dirs.sh...')
+    with open('make_dirs.sh', 'w') as fp:
+        fp.write('#! /bin/bash\n')
+        for prob in problems:
+            fp.write('mkdir ' \
+                    + scratch_dir \
+                    + prob.name
+                    + '\n')
+            for trt in treatments:
+                fp.write('mkdir ' \
+                        + scratch_dir \
+                        + prob.name \
+                        + '/' \
+                        + trt.name \
+                        + '\n')
+                for size in sizes:
+                    fp.write('mkdir ' \
+                            + scratch_dir \
+                            + prob.name \
+                            + '/' \
+                            + trt.name \
+                            + '/' \
+                            + str(size.num_tests * prob.test_case_factor) \
+                            + '\n')
+                    for dil in dilutions:
+                        fp.write('mkdir ' \
+                                + scratch_dir \
+                                + prob.name \
+                                + '/' \
+                                + trt.name \
+                                + '/' \
+                                + str(size.num_tests * prob.test_case_factor) \
+                                + '/' \
+                                + dil.get_name() \
+                                + '\n')
+    print('make_dirs.sh finished!')
+    
+    
+    print('Writing all job files!')
+    for prob in problems:
+        print('Preparing files for ' + prob.name + ' jobs.')
+        for trt in treatments:
+            for size in sizes:
+                for dil in dilutions:
+                    write_job_file(prob, trt, size, dil)
+        print(prob.name + ' job files created!')
+    print('Finished! Goodbye!')

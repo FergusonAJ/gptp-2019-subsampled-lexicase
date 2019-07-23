@@ -9,24 +9,32 @@ class Problem:
         self.eval_time = eval_time
         self.test_case_factor = test_case_factor
         self.seed_offset = seed_offset
+    def __str__(self):
+        return self.name
 class TreatmentInfo:
     def __init__(self, name, config_id, seed_offset):
         self.name = name
         self.config_id = config_id
         self.initial = name[0]
         self.seed_offset = seed_offset
+    def __str__(self):
+        return self.name
 class SizeInfo:
     def __init__(self, prog_cohort_size, num_tests, gens, seed_offset):
         self.prog_cohort_size = prog_cohort_size
         self.num_tests = num_tests
         self.gens = gens 
         self.seed_offset = seed_offset
+    def __str__(self):
+        return str(self.num_tests)
 class DilutionInfo:
     def __init__(self, val, seed_offset):
         self.val = val
         self.seed_offset = seed_offset
     def get_name(self):
         return self.val.replace('.', '_')
+    def __str__(self):
+        return self.get_name()
 
 #Define our directories
 exec_dir = '/mnt/home/fergu358/lexicase/clean/gptp-2019-subsampled-lexicase'
