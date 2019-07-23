@@ -100,6 +100,7 @@ def write_job_file(prob, trt, size, dil, out_dir = None, extra_seed = None, \
         fp.write('OUTPUT_DIR=' + scratch_dir + \
                  '${PROBLEM_NAME}/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}\n')
         fp.write('\n')
+        fp.write('rm ${OUTPUT_DIR}/* -r  #If this is a redo, clear the dir\n') 
         fp.write('cd ' + exec_dir + '\n') 
         fp.write('\n')
         fp.write('echo \"mkdir ${OUTPUT_DIR}\"\n')

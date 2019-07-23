@@ -40,10 +40,8 @@ def get_filename(prob, trt, size, dil, replicate_id):
 
 seed_start_offset = 17000
 
-with open('./unfinished_run.sh', 'w') as fp:
-    for job in jobs_to_run:
-        fp.write('sbatch ' + get_filename(*job) + '\n')
-        write_job_file(job[0], job[1], job[2], job[3], out_dir = output_dir, extra_seed = job[4], \
-            array_size = 1, hours = (24 * 7) - 1)
+for job in jobs_to_run:
+    write_job_file(job[0], job[1], job[2], job[3], out_dir = output_dir, extra_seed = job[4], \
+        array_size = 1, hours = (24 * 7) - 1)
  
 print('Finished! Goodbye!')
