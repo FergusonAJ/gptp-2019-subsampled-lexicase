@@ -1,16 +1,16 @@
 from shared import *
 
 # Problems 
-problems = [prob_grade]#prob_smallest, prob_median, prob_cmp_str_lens, prob_grade, prob_for_loop]
+problems = [prob_smallest, prob_median, prob_cmp_str_lens, prob_grade, prob_for_loop]
 
 # Treatments
-treatments = [trt_cohort, trt_reduced, trt_downsampled]
+treatments = [trt_cohort, trt_reduced, trt_downsampled, trt_truncated]
 
 # Cohort (or equiv.) size
-sizes = [size_100, size_10]#size_10, size_100, size_25, size_50, size_5]
+sizes = [size_100, size_50, size_25, size_10, size_5]
 
 # Dilution rates
-dilutions = [dil_0_0, dil_0_5, dil_0_75, dil_0_9, dil_0_95]
+dilutions = [dil_0_0]
 
 seed_start_offset = 17000
 
@@ -102,7 +102,7 @@ def write_job_file(prob, trt, size, dil):
         
         fp.write('PROG_COHORT_SIZE=' + str(size.prog_cohort_size) + '\n')
         fp.write('NUM_TESTS=' + str(int(prob.test_case_factor * size.num_tests))  + ' ' + \
-                 '#Used for TEST_COHORT_SIZE, NUM_TESTS, and DOWNSAMPLED_NUM_TESTS\n')
+                 '#Used for TEST_COHORT_SIZE, NUM_TESTS, TRUNCATED_MAX_FUNCS and DOWNSAMPLED_NUM_TESTS\n')
         fp.write('\n')
 
         fp.write('DILUTION_PCT="' + dil.val + '"\n')
@@ -119,7 +119,8 @@ def write_job_file(prob, trt, size, dil):
         fp.write('OUTPUT_DIR=' + scratch_dir + \
                  '${PROBLEM_NAME}/${TREATMENT_NAME}/${NUM_TESTS}/${DILUTION_NAME}/${SEED}\n')
         fp.write('\n')
-    
+        fp.write('cd ' + exec_dir + '\n') 
+        fp.write('\n')
         fp.write('echo \"mkdir ${OUTPUT_DIR}\"\n')
         fp.write('mkdir ${OUTPUT_DIR}\n')
         cmd = './gptp2019 ' + \
@@ -134,6 +135,7 @@ def write_job_file(prob, trt, size, dil):
                 '-PROG_COHORT_SIZE ${PROG_COHORT_SIZE} ' + \
                 '-TEST_COHORT_SIZE ${NUM_TESTS} ' + \
                 '-NUM_TESTS ${NUM_TESTS} ' + \
+                '-TRUNCATED_MAX_FUNCS ${NUM_TESTS} ' + \
                 '-DOWNSAMPLED_NUM_TESTS ${NUM_TESTS} ' + \
                 '-DILUTION_PCT ${DILUTION_PCT} ' + \
                 '-GENERATIONS ${GENERATIONS} ' + \

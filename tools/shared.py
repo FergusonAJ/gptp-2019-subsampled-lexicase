@@ -29,7 +29,8 @@ class DilutionInfo:
         return self.val.replace('.', '_')
 
 #Define our directories
-scratch_dir = '/mnt/gs18/scratch/users/fergu358/gptp2019/'
+exec_dir = '/mnt/home/fergu358/lexicase/clean/gptp-2019-subsampled-lexicase'
+scratch_dir = '/mnt/gs18/scratch/users/fergu358/gptp2019_out/'
 if scratch_dir[-1] != '/':
     scratch_dir += '/'
 output_dir = './jobs'        
@@ -47,9 +48,10 @@ prob_cmp_str_lens = Problem('compare-string-lengths', 3, 'CSL',  64,  64, 1, 400
 prob_grade =        Problem('grade',                  4, 'G',    64,  64, 2, 500000)
 
 #Treatments
-trt_reduced = TreatmentInfo('reduced', 0, 10000)
-trt_cohort = TreatmentInfo('cohort', 1, 20000)
+trt_reduced =     TreatmentInfo('reduced',     0, 10000)
+trt_cohort =      TreatmentInfo('cohort',      1, 20000)
 trt_downsampled = TreatmentInfo('downsampled', 2, 30000)
+trt_truncated =   TreatmentInfo('truncated',   3, 40000)
 
 # Cohort (or equiv.) size
 size_100 = SizeInfo(1000, 100, 300,  1000)
@@ -70,6 +72,7 @@ trt_lookup = {}
 trt_lookup['reduced'] = trt_reduced
 trt_lookup['cohort'] = trt_cohort
 trt_lookup['downsampled'] = trt_downsampled
+trt_lookup['truncated'] = trt_truncated
 
 size_lookup = {}
 size_lookup[100] = size_100
