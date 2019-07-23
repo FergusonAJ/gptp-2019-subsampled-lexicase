@@ -132,7 +132,6 @@ protected:
 
     // Bookkeeping variables
     bool setup_done = false;
-    size_t cur_gen;
     size_t num_training_cases;
     size_t num_test_cases;
     size_t cur_update;
@@ -171,6 +170,7 @@ protected:
     emp::Ptr<emp::DataFile> solution_file;
     emp::Ptr<emp::DataFile> phen_diversity_file;
     emp::Ptr<emp::Systematics<org_t, org_gen_t>> org_genotypic_systematics;
+    emp::Ptr<emp::DataFile> org_gen_sys_file;
     emp::Ptr<org_taxon_t> mrca_taxa_ptr;
     size_t mrca_changes;
 
@@ -227,7 +227,8 @@ public:
     void Run();
 };
 
-Experiment::Experiment(): setup_done(false), cur_update(0), solution_found(false){
+Experiment::Experiment(): setup_done(false), cur_update(0), 
+    solution_found(false), actual_current_evals(0){
 
 }
 
@@ -236,6 +237,9 @@ Experiment::~Experiment(){
     if(setup_done){
         solution_file.Delete();
         phen_diversity_file.Delete();
+        // Deleted in world
+        //org_genotypic_systematics.Delete();
+        //org_gen_sys_file.Delete();
         hardware.Delete();
         inst_lib.Delete();
         world.Delete();
@@ -567,9 +571,9 @@ void Experiment::SetupDataCollection(){
     org_genotypic_systematics->AddPairwiseDistanceDataNode();
     org_genotypic_systematics->AddPhylogeneticDiversityDataNode();
     world->AddSystematics(org_genotypic_systematics, "org_genotype");
-    auto & org_gen_sys_file = world->SetupSystematicsFile("org_genotype", 
-        OUTPUT_DIR + "/org_gen_sys.csv", false);
-    org_gen_sys_file.SetTimingRepeat(SUMMARY_STATS_INTERVAL);
+    org_gen_sys_file = emp::Ptr<emp::DataFile>(&(world->SetupSystematicsFile("org_genotype", 
+        OUTPUT_DIR + "/org_gen_sys.csv", false)));
+    org_gen_sys_file->SetTimingRepeat(SUMMARY_STATS_INTERVAL);
     // Default systematics functions:
     // - GetNumActive (taxa)
     // - GetTotalOrgs (total orgs tracked)
@@ -578,67 +582,67 @@ void Experiment::SetupDataCollection(){
     // - GetMRCADepth
     // - CalcDiversity (entropy of taxa in population)
     // Functions to add:
-    org_gen_sys_file.template AddFun<size_t>(
+    org_gen_sys_file->template AddFun<size_t>(
         [this]() { 
             return mrca_changes; 
         }, 
         "mrca_changes", "MRCA changes");
-    org_gen_sys_file.AddStats(
+    org_gen_sys_file->AddStats(
         *(org_genotypic_systematics->GetDataNode("evolutionary_distinctiveness")), 
         "evolutionary_distinctiveness", 
         "evolutionary distinctiveness for a single update", 
         true, true);
-    org_gen_sys_file.AddStats(
+    org_gen_sys_file->AddStats(
         *org_genotypic_systematics->GetDataNode("pairwise_distances"), 
         "pairwise_distance", 
         "pairwise distance for a single update", 
         true, true);
     // - GetPhylogeneticDiversity
-    org_gen_sys_file.AddCurrent(
+    org_gen_sys_file->AddCurrent(
         *org_genotypic_systematics->GetDataNode("phylogenetic_diversity"), 
         "current_phylogenetic_diversity", 
         "current phylogenetic_diversity", 
         true, true);
     // - GetTreeSize
-    org_gen_sys_file.template AddFun<size_t>(
+    org_gen_sys_file->template AddFun<size_t>(
         [this]() { 
             return org_genotypic_systematics->GetTreeSize(); 
         }, 
         "tree_size", 
         "Phylogenetic tree size");
     // - NumSparseTaxa
-    org_gen_sys_file.template AddFun<size_t>(
+    org_gen_sys_file->template AddFun<size_t>(
         [this]() { 
             return org_genotypic_systematics->GetNumSparseTaxa(); 
         }, 
         "num_sparse_taxa", 
         "Number sparse taxa");
     // - mean_sparse_pairwise_distances
-    org_gen_sys_file.template AddFun<size_t>(
+    org_gen_sys_file->template AddFun<size_t>(
         [this]() { 
             return org_genotypic_systematics->GetMeanPairwiseDistance(true); 
         }, 
         "mean_sparse_pairwise_distances", 
         "Number sparse taxa");
     // - sum_sparse_pairwise_distances
-    org_gen_sys_file.template AddFun<size_t>(
+    org_gen_sys_file->template AddFun<size_t>(
         [this]() { 
             return org_genotypic_systematics->GetSumPairwiseDistance(true); 
         }, 
         "sum_sparse_pairwise_distances", 
         "Number sparse taxa");
     // - variance_sparse_pairwise_distances
-    org_gen_sys_file.template AddFun<size_t>(
+    org_gen_sys_file->template AddFun<size_t>(
         [this]() { 
             return org_genotypic_systematics->GetVariancePairwiseDistance(true); 
         }, 
         "variance_sparse_pairwise_distances", 
         "Number sparse taxa");
 
-    org_gen_sys_file.AddFun(program_stats.get_evaluations, "evaluations");
-    org_gen_sys_file.AddFun(program_stats.get_actual_evaluations, "actual_evaluations");
+    org_gen_sys_file->AddFun(program_stats.get_evaluations, "evaluations");
+    org_gen_sys_file->AddFun(program_stats.get_actual_evaluations, "actual_evaluations");
 
-    org_gen_sys_file.PrintHeaderKeys();
+    org_gen_sys_file->PrintHeaderKeys();
 
     // Add function(s) to program systematics snapshot
     org_genotypic_systematics->AddSnapshotFun(
@@ -881,10 +885,17 @@ void Experiment::Evaluate(){
 void Experiment::Select(){
     switch(treatment_type){
         case REDUCED_LEXICASE: {
+            emp::CohortLexicaseSelect(*world,
+                                lexicase_fit_funcs,
+                                program_ids,
+                                POP_SIZE,
+                                LEXICASE_MAX_FUNCS);
+            /*
             emp::LexicaseSelect(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 LEXICASE_MAX_FUNCS);
+            */
             break;
         }
         case COHORT_LEXICASE: {
@@ -910,17 +921,31 @@ void Experiment::Select(){
             break;
         }
         case DOWNSAMPLED_LEXICASE: {
+            emp::CohortLexicaseSelect(*world,
+                                lexicase_fit_funcs,
+                                program_ids,
+                                POP_SIZE,
+                                DOWNSAMPLED_MAX_FUNCS);
+            /*
             emp::LexicaseSelect(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 DOWNSAMPLED_MAX_FUNCS);
+            */
             break;
         }
         case TRUNCATED_LEXICASE: {
+            emp::CohortLexicaseSelect(*world,
+                                lexicase_fit_funcs,
+                                program_ids,
+                                POP_SIZE,
+                                TRUNCATED_MAX_FUNCS);
+            /*
             emp::LexicaseSelect(*world,
                                 lexicase_fit_funcs, 
                                 POP_SIZE,
                                 TRUNCATED_MAX_FUNCS);
+            */
             break;
         }
         default: {
@@ -1032,10 +1057,10 @@ void Experiment::SavePopSnapshot(){
         file.Update();
     }
     
-    // Take diversity snapshot
+    // Take diversity snapshots
     phen_diversity_file->Update();
+    org_gen_sys_file->Update();
     // Snapshot phylogeny
-    
     org_genotypic_systematics->Snapshot(snapshot_dir + 
             "/program_phylogeny_" + emp::to_string((int)world->GetUpdate()) + ".csv");
 }
@@ -1045,6 +1070,7 @@ void Experiment::Update(){
     std::cout << "Update: " << cur_update << "; ";
     std::cout << "Best Score: " << current_best_score << "; ";
     std::cout << "Best Actual Score: " << actual_current_best_score << "; ";
+    std::cout << "Evals: " << actual_current_evals << "; ";
     std::cout << "Solution Found?: " << solution_found << "; ";
     std::cout << std::endl;
     world->Update();
