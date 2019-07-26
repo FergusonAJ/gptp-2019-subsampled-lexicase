@@ -669,7 +669,7 @@ void Experiment::SetupDataCollectionFunctions(){
         else if(treatment_type == DOWNSAMPLED_LEXICASE)
             return (size_t)(updates * POP_SIZE * DOWNSAMPLED_NUM_TESTS);
         else if(treatment_type == TRUNCATED_LEXICASE){
-            return (size_t)(updates * POP_SIZE * NUM_TESTS); 
+            return (size_t)(updates * POP_SIZE * num_training_cases); // Note: this one is different 
         }
         else
             return (size_t)0;
