@@ -2,8 +2,8 @@ import random
 import sys
 
 A_STR = 'Student has a A grade.'
-B_STR = 'Student has a C grade.'
-C_STR = 'Student has a B grade.'
+B_STR = 'Student has a B grade.'
+C_STR = 'Student has a C grade.'
 D_STR = 'Student has a D grade.'
 F_STR = 'Student has a F grade.'
 
