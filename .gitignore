@@ -5,3 +5,4 @@ output/
 tools/.Rhistory
 tools/__pycache__/
 experiment_config.cfg
+specialist_experiment/.Rhistory
