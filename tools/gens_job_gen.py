@@ -1,4 +1,4 @@
-from shared import *
+from gens_shared import *
 
 # Problems 
 problems = [prob_median]#, prob_median, prob_cmp_str_lens, prob_grade, prob_for_loop]
