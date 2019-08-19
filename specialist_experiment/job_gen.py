@@ -1,33 +1,34 @@
 # Constants
-SA_PATH = '~/tools/empirical_work/Empirical/apps/SelectionAnalyze/SelectionAnalyze'
-INPUT_DIR = './pop_data/'
-OUTPUT_DIR = './selection_probs/'
-JOB_DIR = './jobs/'
+SA_PATH = '~/tools/empirical_work/Empirical/apps/SelectionAnalyze/'
+INPUT_DIR = '~/lexicase/specialist/gptp-2019-subsampled-lexicase/specialist_experiment/pop_data/'
+OUTPUT_DIR = '/mnt/gs18/scratch/users/fergu358/gptp2019_specialists/'
+JOB_DIR = './jobs/100/'
 NUM_REPLICATES = 100
-NUM_SAMPLES = 1000000
+NUM_SAMPLES = 100000
 
 # Configuration variables
-pop_size_L = [10,20,100]
-num_tests_L = [10,20]
-pass_prob_L = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-subsampling_level_L = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+pop_size_L = [100]
+num_tests_L = [10, 20]
+pass_prob_L = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+subsampling_level_L = [0.05, 0.1, 0.25, 0.5]
 tourney_size_L = [2, 7]
 
 
 
 def get_pop_file(pop_size, num_tests, pass_prob, rep_id):
     return 'population' + \
-            '__num_tests_' + str(pop_size) + \
-            '__pop_size_' + str(num_tests) + \
+            '__num_tests_' + str(num_tests) + \
+            '__pop_size_' + str(pop_size) + \
             '__pass_prob_' + str(pass_prob).replace('.', '_') + \
             '__rep_id_' + str(rep_id) + \
             '.csv'
 
 def get_lexicase_line(pop_size, num_tests, pass_prob, rep_id):
     s = ''
-    s += SA_PATH + ' '
+    s += SA_PATH + 'SelectionAnalyze' + ' '
     pop_filename = get_pop_file(pop_size, num_tests, pass_prob, rep_id)
     # Shared
+    s += '-CONFIG ' + SA_PATH + 'config.cfg' + ' '
     s += '-INPUT_FILENAME ' + INPUT_DIR + pop_filename + ' ' 
     s += '-OUTPUT_FILENAME ' + OUTPUT_DIR + pop_filename.replace('population', 'lexicase') + ' '
     s += '-AGGREGATE_FIT_IDX ' + '1' + ' '
@@ -42,9 +43,10 @@ def get_cohort_lines(pop_size, num_tests, pass_prob, rep_id):
     s = ''
     for subsampling_level in subsampling_level_L:
         subsampling_str = str(subsampling_level).replace('.', '_')
-        s += SA_PATH + ' '
+        s += SA_PATH + 'SelectionAnalyze' + ' '
         pop_filename = get_pop_file(pop_size, num_tests, pass_prob, rep_id)
         # Shared
+        s += '-CONFIG ' + SA_PATH + 'config.cfg' + ' '
         s += '-INPUT_FILENAME ' + INPUT_DIR + pop_filename + ' ' 
         s += '-AGGREGATE_FIT_IDX ' + '1' + ' '
         s += '-LEXICASE_START_IDX ' + '2' + ' '
@@ -63,9 +65,10 @@ def get_downsampled_lines(pop_size, num_tests, pass_prob, rep_id):
     s = ''
     for subsampling_level in subsampling_level_L:
         subsampling_str = str(subsampling_level).replace('.', '_')
-        s += SA_PATH + ' '
+        s += SA_PATH + 'SelectionAnalyze' + ' '
         pop_filename = get_pop_file(pop_size, num_tests, pass_prob, rep_id)
         # Shared
+        s += '-CONFIG ' + SA_PATH + 'config.cfg' + ' '
         s += '-INPUT_FILENAME ' + INPUT_DIR + pop_filename + ' ' 
         s += '-OUTPUT_FILENAME ' + OUTPUT_DIR + pop_filename.replace('population', 'downsampled_' + subsampling_str) + ' '
         s += '-AGGREGATE_FIT_IDX ' + '1' + ' '
@@ -82,9 +85,10 @@ def get_downsampled_lines(pop_size, num_tests, pass_prob, rep_id):
 
 def get_roulette_line(pop_size, num_tests, pass_prob, rep_id):
     s = ''
-    s += SA_PATH + ' '
+    s += SA_PATH + 'SelectionAnalyze' + ' '
     pop_filename = get_pop_file(pop_size, num_tests, pass_prob, rep_id)
     # Shared
+    s += '-CONFIG ' + SA_PATH + 'config.cfg' + ' '
     s += '-INPUT_FILENAME ' + INPUT_DIR + pop_filename + ' ' 
     s += '-OUTPUT_FILENAME ' + OUTPUT_DIR + pop_filename.replace('population', 'roulette') + ' '
     s += '-AGGREGATE_FIT_IDX ' + '1' + ' '
@@ -97,9 +101,10 @@ def get_roulette_line(pop_size, num_tests, pass_prob, rep_id):
 def get_tournament_lines(pop_size, num_tests, pass_prob, rep_id):
     s = ''
     for tourney_size in tourney_size_L:
-        s += SA_PATH + ' '
+        s += SA_PATH + 'SelectionAnalyze' + ' '
         pop_filename = get_pop_file(pop_size, num_tests, pass_prob, rep_id)
         # Shared
+        s += '-CONFIG ' + SA_PATH + 'config.cfg' + ' '
         s += '-INPUT_FILENAME ' + INPUT_DIR + pop_filename + ' ' 
         s += '-OUTPUT_FILENAME ' + OUTPUT_DIR + pop_filename.replace('population', 'tournament_' + str(tourney_size)) + ' '
         s += '-AGGREGATE_FIT_IDX ' + '1' + ' '
