@@ -1,6 +1,6 @@
 import os
 import re
-from shared import *
+from gens_shared import *
 
 # Variables to be set
 scratch_dir = '/mnt/gs18/scratch/users/fergu358/gptp2019_gens/'
