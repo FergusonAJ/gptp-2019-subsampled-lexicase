@@ -1,7 +1,6 @@
 *.swp
 data/out/
 gptp2019
-output/
 tools/.Rhistory
 tools/__pycache__/
 experiment_config.cfg
