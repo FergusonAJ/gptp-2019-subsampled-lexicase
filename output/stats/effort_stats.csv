@@ -1,0 +1,16 @@
+"","problem","treatment","p_value"
+"1","smallest","cohort",4.39836510296144e-12
+"2","smallest","downsampled",3.18011289818433e-12
+"3","smallest","truncated",0.683663092908225
+"4","median","cohort",2.41119007802634e-11
+"5","median","downsampled",1.7526070479003e-08
+"6","median","truncated",0.0133638580788611
+"7","grade","cohort",4.74643716146916e-14
+"8","grade","downsampled",2.82875756324142e-09
+"9","grade","truncated",0.0915540649728554
+"10","for-loop-index","cohort",1.75495209147885e-08
+"11","for-loop-index","downsampled",1.75495209147885e-08
+"12","for-loop-index","truncated",0.252259653851283
+"13","compare-string-lengths","cohort",0.000169387659575417
+"14","compare-string-lengths","downsampled",4.66513069289319e-09
+"15","compare-string-lengths","truncated",1.18275252538737e-06

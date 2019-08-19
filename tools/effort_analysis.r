@@ -5,7 +5,7 @@ library(ggplot2)
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
 
 # Load in shared data
-source('shared.r')
+source('../tools/shared.r')
 
 
 # Load data, convert string 'True'/'False' to R booleans
@@ -125,7 +125,7 @@ ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_lev
   theme(panel.grid.major.y =  element_blank()) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
   coord_flip() +
-  ggsave('computational_effort.pdf', units = 'in', width = 14, height = 4)
+  ggsave('./plots/computational_effort.pdf', units = 'in', width = 14, height = 4)
 
 
 # Run the stats
@@ -151,5 +151,5 @@ for(prob in unique(filtered_data$problem)){
   }
 }
 print(stats_df)
-write.csv(stats_df, 'effort_stats.csv')
+write.csv(stats_df, './stats/effort_stats.csv')
 print('Finished!')

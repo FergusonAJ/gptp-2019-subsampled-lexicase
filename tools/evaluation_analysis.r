@@ -14,7 +14,7 @@ SET_ALL_FULL_300 = T
 # Set the working directory so RStudio looks at this folder...
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
 # Load variables (e.g., colors) that are consistent across analyses
-source('shared.r')
+source('../tools/shared.r')
 
 # Read the data!
 data = read.csv('evaluation_data.csv', stringsAsFactors = FALSE)
@@ -159,7 +159,7 @@ ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=s
   guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
   guides(size=F) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-  ggsave(filename = 'solutions_found_evals.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/solutions_found_evals.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
 # ##########################################################################
@@ -235,69 +235,7 @@ ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=s
   guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
   guides(size = F) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-  ggsave(filename = 'solutions_found_evals_overfit.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
-
-# # 
-# # 
-# # ##########################################################################
-# # ###############    Checking for gen 300 solutions    #####################
-# # ##########################################################################
-# # 
-# # Calculate the number of replicates for each configuration that solved all the test
-# #   cases at a measly 300 generations
-# res_df$const_time_solutions = 0
-# for(prob in problems){
-#   for(trt in treatments){
-#     for(size in sizes){
-#       for(dil in dilutions){
-#         tmp = data[data$problem == prob & data$treatment == trt & data$num_tests == size & data$dilution == dil & data$found & data$first_gen_found <= 300,]
-#         res_df[res_df$problem == prob & res_df$treatment == trt & res_df$num_tests == size & res_df$dilution == dil,]$const_time_solutions = nrow(tmp)
-#       }
-#     }
-#   }
-# }
-# 
-# # Plot the number of replicates that solved the problem in <= 300 generations
-# ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=const_time_solutions, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
-#   geom_bar(stat='identity', position = 'dodge') +
-#   geom_text(aes(label=const_time_solutions, y = -5), position=position_dodge(0.9)) +
-#   scale_y_continuous(breaks = c(0, 25, 50), limits = c(-7 ,57)) +
-#   scale_fill_manual(values=color_vec) +
-#   coord_flip() +
-#   facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
-#   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-#   ggtitle('Perfect Solutions Found - Constant Generations') +
-#   theme(plot.title = element_text(hjust = 0.5)) +
-#   ylab('Number of Perfect Solutions Found') +
-#   xlab('Subsampling Level') +
-#   theme(axis.title = element_text(size=12)) +
-#   theme(axis.text =  element_text(size=10.5)) +
-#   theme(panel.grid.major.y = element_blank()) +
-#   guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
-#   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-#   ggsave(filename = 'solutions_found_gens.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
-# 
-# # Plot the number of <= 300 gen solutions with the constant eval bars (the first plot) as shadows
-# ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=const_time_solutions, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
-#   geom_bar(stat='identity', position = 'dodge') +
-#   geom_text(aes(label=const_time_solutions, y = -5), position=position_dodge(0.9)) +
-#   geom_bar(mapping = aes(x=factor(size_name, levels = size_levels), y=solutions_found, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels)), alpha = 0.5, stat="identity", position=position_dodge(0.9), width=0.65) +
-#   geom_text(aes(label=solutions_found, y=solutions_found + 5), position=position_dodge(0.9)) +
-#   scale_y_continuous(breaks = c(0, 25, 50), limits = c(-7 ,57)) +
-#   scale_fill_manual(values=color_vec) +
-#   coord_flip() +
-#   facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
-#   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-#   ggtitle('Perfect Solutions Found - Constant Generations vs Constant Evaluations') +
-#   theme(plot.title = element_text(hjust = 0.5)) +
-#   ylab('Number of Perfect Solutions Found') +
-#   xlab('Subsampling Level') +
-#   theme(axis.title = element_text(size=12)) +
-#   theme(axis.text =  element_text(size=10.5)) +
-#   theme(panel.grid.major.y = element_blank()) +
-#   guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
-#   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-#   ggsave(filename = 'solutions_found_gens_vs_evals.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/solutions_found_evals_overfit.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
 
@@ -315,7 +253,7 @@ if(nrow(unfinished) > 0){
   unfinished = unfinished[order(unfinished$pct_gen),]
   # Print and write to a .csv!
   print(unfinished)
-  write.csv(unfinished, 'unfinished_gptp.csv', quote=FALSE)
+  write.csv(unfinished, 'unfinished_evaluations.csv', quote=FALSE)
 }
 # 
 # # Check which configurations did not hit the 50% solve rate in the allotted time (in evals)

@@ -9,7 +9,7 @@ IMG_HEIGHT = 6 #inches
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
 
 # Load in shared data (colors)
-source('shared.r')
+source('../tools/shared.r')
 
 color_vec = c(cohort_color, downsampled_color, full_color)
 
@@ -78,7 +78,7 @@ ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) 
   theme(axis.title = element_text(size=12)) +
   theme(axis.text =  element_text(size=10.5)) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
-  ggsave(filename = 'specialist_experimental.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/specialist_experimental.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
   
 ######################################################################################
 ###################### Predicted Specialist Preservation #############################
@@ -172,4 +172,4 @@ ggplot(pred_data, aes(x = pop_size, y = perfect, color = trt_name)) +
   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   theme(axis.title = element_text(size=12)) +
   theme(axis.text =  element_text(size=10.5)) +
-  ggsave(filename = 'specialist_predicted.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/specialist_predicted.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
