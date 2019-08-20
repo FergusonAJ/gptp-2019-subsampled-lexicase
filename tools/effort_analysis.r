@@ -130,10 +130,10 @@ ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_lev
 
 # Run the stats
 # Kruskal-wallis to test for any effect across all treatments (hint: they all have one)
-# Then do a Mann-Whitney comparison (i.e., unpaird Wilcox) between standard and each treatment
+# Then do a Mann-Whitney comparison (i.e., unpaired Wilcox) between standard and each treatment
 # Holm correction is used for multiple comparisons
-stats_df = data.frame(data = matrix(nrow = 0, ncol = 3))
-colnames(stats_df) = c('problem', 'treatment', 'p_value')
+stats_df = data.frame(data = matrix(nrow = 0, ncol = 5))
+colnames(stats_df) = c('problem', 'treatment', 'kruskal_p_value', 'p_value', 'p_value_adj')
 for(prob in unique(filtered_data$problem)){
   prob_name = prob_lookup[[prob]]
   cat('Problem: ', prob_name, '\n')
@@ -144,12 +144,19 @@ for(prob in unique(filtered_data$problem)){
     for(trt in setdiff(treatments, c('full'))){
       trt_data = filtered_data[filtered_data$problem == prob & filtered_data$treatment == trt,]
       wilcox_res = wilcox.test(ctrl_data$evals, trt_data$evals, paired=F)
-      stats_df[nrow(stats_df) + 1,] = c(prob, trt, wilcox_res$p.value)
+      stats_df[nrow(stats_df) + 1,] = c(prob, trt, kruskal_res$p.value, wilcox_res$p.value, 0)
     }
     stats_df$p_value = as.numeric(stats_df$p_value)
-    stats_df[stats_df$problem == prob,]$p_value = p.adjust(stats_df[stats_df$problem == prob,]$p_value, method = 'holm')
+    stats_df[stats_df$problem == prob,]$p_value_adj = p.adjust(stats_df[stats_df$problem == prob,]$p_value, method = 'holm')
+  }
+  else{
+    stats_df[nrow(stats_df) + 1,] = c(prob, trt, kruskal_res$p.value, 'NA', 'NA')
   }
 }
+stats_df$kruskal_p_value = as.numeric(stats_df$kruskal_p_value)
+stats_df$p_value = as.numeric(stats_df$p_value)
+stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
+stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
 print(stats_df)
 write.csv(stats_df, './stats/effort_stats.csv')
 print('Finished!')

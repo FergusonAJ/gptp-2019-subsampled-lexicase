@@ -250,12 +250,22 @@ for(prob in problems){
       mat[2,1] = ctrl_data$solutions_found
       mat[2,2] = ctrl_data$num_replicates - ctrl_data$solutions_found
       res = fisher.test(mat)
-      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 0, F)
+      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 1, F)
     }
   }
   stats_df$p_value = as.numeric(stats_df$p_value)
   stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
   stats_df[stats_df$problem == prob, ]$p_value_adj = p.adjust(stats_df[stats_df$problem == prob, ]$p_value, method = 'holm')
 }
+# Frustratingly, most numbers end up as strings, let's ensure that doesn't happen
+stats_df$p_value =              as.numeric(stats_df$p_value)
+stats_df$p_value_adj =          as.numeric(stats_df$p_value_adj)
+stats_df$ctrl_solutions_found = as.numeric(stats_df$ctrl_solutions_found)
+stats_df$ctrl_num_replicates  = as.numeric(stats_df$ctrl_num_replicates)
+stats_df$cond_solutions_found = as.numeric(stats_df$cond_solutions_found)
+stats_df$cond_num_replicates  = as.numeric(stats_df$cond_num_replicates)
+
 stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
+stats_df$ctrl_pct = stats_df$ctrl_solutions_found / stats_df$ctrl_num_replicates
+stats_df$cond_pct = stats_df$cond_solutions_found / stats_df$cond_num_replicates
 write.csv(stats_df, './stats/evals_stats.csv')

@@ -95,7 +95,7 @@ for(prob_name in unique(res_df$prob_name)){
 gridlines_df$y = as.numeric(gridlines_df$y)
 
 # Set our color order
-color_vec = c(cohort_color, downsampled_color, reduced_color, full_color)
+color_vec = c(cohort_color, downsampled_color, full_color)
 
 
 # Plot the solution graphs
@@ -161,7 +161,7 @@ for(prob in problems){
       mat[2,1] = ctrl_data$solutions_found
       mat[2,2] = ctrl_data$num_replicates - ctrl_data$solutions_found
       res = fisher.test(mat)
-      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 0, F)
+      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 1, F)
     }
   }
   stats_df$p_value = as.numeric(stats_df$p_value)

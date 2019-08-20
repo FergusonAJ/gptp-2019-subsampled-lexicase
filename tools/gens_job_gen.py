@@ -70,7 +70,7 @@ def write_job_file(prob, trt, size, dil, out_dir = None, extra_seed = None, \
         fp.write('PROBLEM_NAME=\"' + prob.name + '\"\n')
         fp.write('PROBLEM_ID=' + str(prob.prob_id) + '\n')
         fp.write('TRAINING_FILENAME=\"' + data_dir + prob.name + \
-                 '/training-examples-' + prob.name + '-shuffled.csv' + '\"\n')
+                 '/training-examples-' + prob.name + '.csv' + '\"\n')
         fp.write('TESTING_FILENAME=\"' + data_dir + prob.name + \
                  '/testing-examples-' + prob.name + '.csv' + '\"\n')
         fp.write('MAX_PROG_SIZE=' + str(prob.max_size) + '\n')
