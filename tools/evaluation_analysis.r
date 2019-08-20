@@ -10,6 +10,7 @@ RM_TRUNCATED = T
 RM_100_SUBS = F
 LUMP_FULL = T
 SET_ALL_FULL_300 = T
+RM_CMP_STR_LENS = T
 
 # Set the working directory so RStudio looks at this folder...
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
@@ -35,6 +36,10 @@ if(LUMP_FULL & sum(data$treatment == 'full') > 0){
 # The way the code is written, many 'full' jobs show as incomplete as their max_gens were changed in a weird way
 if(SET_ALL_FULL_300){
   data[data$treatment == 'full' & data$max_gen >= 300,]$finished = 'True'
+}
+
+if(RM_CMP_STR_LENS){
+  data = data[data$problem != 'compare-string-lengths',]
 }
 
 # Grab the configuration variables straight from the data

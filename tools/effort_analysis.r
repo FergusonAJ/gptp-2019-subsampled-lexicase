@@ -3,6 +3,7 @@ library(ggplot2)
 
 ## CONFIG OPTIONS
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
+RM_CMP_STR_LENS  = T
 
 # Load in shared data
 source('../tools/shared.r')
@@ -14,6 +15,10 @@ data$solution_found = data$solution_found == 'True'
 
 # Filter out runs with no results
 data = data[data$solution_found,]
+
+if(RM_CMP_STR_LENS){
+  data = data[data$problem != 'compare-string-lengths',]
+}
 
 
 # Grab all configuration variables present

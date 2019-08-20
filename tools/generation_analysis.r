@@ -7,6 +7,7 @@ library(ggplot2)
 IMG_WIDTH = 14 #inches
 IMG_HEIGHT = 6 #inches
 LUMP_FULL = T
+RM_CMP_STR_LENS = T
 
 # Set the working directory so RStudio looks at this folder...
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
@@ -16,18 +17,24 @@ source('../tools/shared.r')
 # Read the data!
 data = read.csv('generation_data.csv', stringsAsFactors = FALSE)
 
-# Grab the configuration variables straight from the data
-problems = unique(data$problem)
-treatments = unique(data$treatment)
-sizes = unique(data$num_tests)
-dilutions = unique(data$dilution)
-
 # Convert some 'True/False' strings to R booleans
 data$found = data$solution_found == 'True'
 
 if(LUMP_FULL){
   data[data$treatment=='full',]$num_tests = '100'
 }
+
+if(RM_CMP_STR_LENS){
+  data = data[data$problem != 'compare-string-lengths',]
+}
+
+# Grab the configuration variables straight from the data
+problems = unique(data$problem)
+treatments = unique(data$treatment)
+sizes = unique(data$num_tests)
+dilutions = unique(data$dilution)
+
+
 
 # Calculate solution counts for each configuration
 res = matrix(ncol=6, nrow=0) 

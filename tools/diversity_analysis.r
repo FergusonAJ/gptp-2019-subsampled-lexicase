@@ -3,6 +3,7 @@ library(ggplot2)
 
 ## CONFIG OPTIONS
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
+RM_CMP_STR_LENS = T
 
 # Load in shared vars (e.g., colors)
 source('../tools/shared.r')
@@ -11,6 +12,11 @@ source('../tools/shared.r')
 data = read.csv('diversity_data.csv', stringsAsFactors = FALSE)
 data$solution_found = data$solution_found == 'True'
 data$finished = data$finished == 'True'
+
+
+if(RM_CMP_STR_LENS){
+  data = data[data$problem != 'compare-string-lengths',]
+}
 
 found = data[data$solution_found,]
 
