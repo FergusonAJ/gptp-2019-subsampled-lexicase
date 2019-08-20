@@ -46,14 +46,6 @@ found$dil_name = as.factor(found$dil_name)
 found$trt_name = as.factor(found$trt_name)
 found$prob_name = as.factor(found$prob_name)
 
-# trt_levels = c('reduced', 'downsampled', 'cohort')
-# 
-# ggplot(found, aes(x = factor(num_tests, levels = c('100', '50', '25', '10', '5')), y = behavioral_diversity, fill = factor(treatment, levels=trt_levels))) + 
-#   geom_boxplot(position=position_dodge(0.6), width = 0.5) + 
-#   scale_fill_manual(values = color_vec) +
-#   scale_x_discrete() + 
-#   facet_grid(rows = vars(problem))#, cols = vars(factor(num_tests, levels = c('100', '50', '25', '10', '5'))))
-
 color_vec = c(cohort_color, downsampled_color, reduced_color)
 
 plot_diversity = function(working_name, pretty_name, log_scale = F){
@@ -70,7 +62,7 @@ plot_diversity = function(working_name, pretty_name, log_scale = F){
       theme(axis.title = element_text(size=12)) +
       theme(axis.text =  element_text(size=10.5)) +
       theme(panel.grid.major.y = element_blank()) +
-      guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
+      guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
       theme(legend.position="bottom", legend.text = element_text(size=10.5))
   if(log_scale){
     ggp = ggp + scale_y_log10()

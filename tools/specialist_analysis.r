@@ -73,7 +73,7 @@ ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) 
   ylab('Specialist Survival Chance') +
   ggtitle('Specialist Preservation Probability') +
   theme(plot.title = element_text(hjust = 0.5)) +
-  guides(color=guide_legend(title="Selection Scheme", reverse = T)) +
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   theme(axis.title = element_text(size=12)) +
   theme(axis.text =  element_text(size=10.5)) +
@@ -167,7 +167,7 @@ ggplot(pred_data, aes(x = pop_size, y = perfect, color = trt_name)) +
   ylab('Predicted Specialist Survival Chance') +
   ggtitle('Worst-case Specialist Preservation') +
   theme(plot.title = element_text(hjust = 0.5)) +
-  guides(color=guide_legend(title="Selection Scheme", reverse = T)) +
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   theme(axis.title = element_text(size=12)) +

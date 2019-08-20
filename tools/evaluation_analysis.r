@@ -156,7 +156,7 @@ ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=s
   theme(panel.grid.minor.y = element_blank()) +
   theme(panel.grid.major.x = element_blank()) +
   theme(panel.grid.minor.x = element_blank()) +
-  guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
   guides(size=F) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
   ggsave(filename = './plots/solutions_found_evals.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
@@ -180,33 +180,10 @@ for(prob in problems){
   }
 }
 
-# # Plot the perfect + overfit solution graphs
-# ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solutions_found, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
-#   geom_bar(stat='identity', position = 'dodge') +
-#   geom_text(aes(label=solutions_found, y = -5), position=position_dodge(0.9)) +
-#   geom_bar(mapping = aes(x=factor(size_name, levels = size_levels), y=training_solutions, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels)), alpha = 0.5, stat="identity", position=position_dodge(0.9), width=0.65) +
-#   geom_text(aes(label=training_solutions, y=training_solutions + 5), position=position_dodge(0.9)) +
-#   scale_y_continuous(breaks = c(0, 25, 50), limits = c(-7 ,57)) +
-#   scale_fill_manual(values=color_vec) +
-#   coord_flip() +
-#   facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
-#   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-#   ggtitle('Perfect and Overfit Solutions - Constant Evaluations') +
-#   theme(plot.title = element_text(hjust = 0.5)) +
-#   ylab('Number of Perfect Solutions Found') +
-#   xlab('Subsampling Level') +
-#   theme(axis.title = element_text(size=12)) +
-#   theme(axis.text =  element_text(size=10.5)) +
-#   theme(panel.grid.major.y = element_blank()) +
-#   guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
-#   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-#   ggsave(filename = 'solutions_found_evals_overfit.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
-
+# Calculate the percentage of replicates that passed all training cases
 res_df$training_pct = (res_df$training_solutions / res_df$num_replicates)
 res_df$training_pct_str = sprintf('%.3f', res_df$training_pct)
 res_df[is.nan(res_df$training_pct), ]$training_pct_str = ''
-
-
 
 # # Plot the overfit data
 ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
@@ -232,7 +209,7 @@ ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=s
   theme(panel.grid.minor.y = element_blank()) +
   theme(panel.grid.major.x = element_blank()) +
   theme(panel.grid.minor.x = element_blank()) +
-  guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
   guides(size = F) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
   ggsave(filename = './plots/solutions_found_evals_overfit.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
@@ -255,147 +232,30 @@ if(nrow(unfinished) > 0){
   print(unfinished)
   write.csv(unfinished, 'unfinished_evaluations.csv', quote=FALSE)
 }
-# 
-# # Check which configurations did not hit the 50% solve rate in the allotted time (in evals)
-# res_df[res_df$solutions_found < 25 & (res_df$treatment != 'reduced' | res_df$size == 100),]
-# 
-# # Finish! :^)
-# cat('Done!\n')
-# 
-# # For the plots that Charles requested for the GPTP conference, see data_analysis.r
-# #   Warning: Do so at your own risk. That file contains awful code with no comments written
-# #   at around 2 am...
-# 
-# prob = 'smallest'
-# ggplot(data = res_df[res_df$problem == prob,], mapping=aes(x=factor(trt_name, levels = trt_levels), y=const_time_solutions, fill=trt_name)) +
-#   geom_bar(stat="identity") +
-#   guides(fill=FALSE) +
-#   theme(axis.text.x = element_text(angle = 45, hjust = 1, size=10)) + ylim(-5, 55) +
-#   geom_text(aes(label=const_time_solutions, y = -5)) +
-#   geom_bar(mapping = aes(x=trt_name, y=solutions_found), alpha = 0.5, stat="identity") +
-#   geom_text(aes(label=solutions_found, y=solutions_found), nudge_y=3) +
-#   scale_fill_manual(values=color_vec) +
-#   ylab('Number of Perfect Solutions Found') +
-#   xlab('Lexicase Variant') +
-#   facet_grid(. ~ factor(size_name, levels=size_levels)) + ggtitle(paste(prob_lookup[[prob]], ' - Perfect Solutions at 300 generations')) + 
-#   ggsave(filename = paste('test-', prob, '.pdf', sep=''), units = 'in', width = 10, height = 6)
-# 
 
+##########################################################################
+#########################     Statistics    ##############################
+##########################################################################
 
-# pairwise_fisher = function(data, adjust_method = 'bonferroni'){
-#   nrows = nrow(data)
-#   res = matrix(
-#     ncol = nrows, 
-#     nrow = nrows, 
-#     dimnames = list(
-#       rownames(data),
-#       rownames(data)
-#     ))
-#   
-#   for(i in 1:(nrows - 1)){
-#     for(j in (i+1):nrows){
-#       #cat(i, ' ', j, '\n')
-#       tmp = fisher.test(data[c(i,j),])
-#       res[i,j] = tmp$p.value
-#     }
-#   }
-#   as.numeric(res)
-#   adjusted_vals = p.adjust(as.numeric(res), method = adjust_method)  
-#   adjusted_res = matrix(
-#     data = adjusted_vals,
-#     ncol = nrows, 
-#     nrow = nrows, 
-#     dimnames = list(
-#       rownames(data),
-#       rownames(data)
-#     ))
-#   for(i in 1:(nrows - 1)){
-#     for(j in (i+1):nrows){
-#       adjusted_res[j,i] = adjusted_res[i,j]
-#     }
-#   }
-#   return(adjusted_res)
-# }
-# 
-# # Do stats on problem solving rates (Constant evaluations)
-# stats_df = res_df[, c('prob_name', 'trt_name', 'size_name', 'solutions_found')]
-# stats_df$config = paste(stats_df$trt_name, stats_df$size_name, sep = '_')
-# for(prob in unique(res_df$problem)){
-#   prob_name = prob_lookup[[prob]]
-#   print(stats_df[stats_df$prob_name == prob_name,])
-#   cat('Problem: ', prob_name, '\n')
-#   prob_stats_df = stats_df[stats_df$prob_name == prob_name, c('config', 'solutions_found')]
-#   prob_stats_df$solutions_not_found = 50 - prob_stats_df$solutions_found
-#   rownames(prob_stats_df) = prob_stats_df$config
-#   prob_stats_matrix = matrix(
-#       data = c(as.numeric(prob_stats_df$solutions_found), as.numeric(prob_stats_df$solutions_not_found)),
-#       nrow = nrow(prob_stats_df),
-#       ncol = 2, 
-#       dimnames = list(prob_stats_df$config, c('Successes', 'Failures'))
-#   )
-#   print(prob_stats_matrix)
-#   stats_res = pairwise_fisher(prob_stats_matrix, adjust_method='holm')
-#   print(stats_res)
-#   write.csv(stats_res, paste0('eval_stats_', prob, '.csv'))
-#   write.csv(stats_res <= 0.05, paste0('eval_stats_boolean_', prob, '.csv'))
-# }
-# 
-# rm('stats_df') # So I can reuse the variable...
-# 
-# # Do stats on problem solving rates (Constant generations)
-# stats_df = res_df[, c('prob_name', 'trt_name', 'size_name', 'const_time_solutions')]
-# stats_df$config = paste(stats_df$trt_name, stats_df$size_name, sep = '_')
-# for(prob in unique(res_df$problem)){
-#   prob_name = prob_lookup[[prob]]
-#   print(stats_df[stats_df$prob_name == prob_name,])
-#   cat('Problem: ', prob_name, '\n')
-#   prob_stats_df = stats_df[stats_df$prob_name == prob_name, c('config', 'const_time_solutions')]
-#   prob_stats_df$solutions_not_found = 50 - prob_stats_df$const_time_solutions
-#   rownames(prob_stats_df) = prob_stats_df$config
-#   prob_stats_matrix = matrix(
-#     data = c(as.numeric(prob_stats_df$const_time_solutions), as.numeric(prob_stats_df$solutions_not_found)),
-#     nrow = nrow(prob_stats_df),
-#     ncol = 2, 
-#     dimnames = list(prob_stats_df$config, c('Successes', 'Failures'))
-#   )
-#   print(prob_stats_matrix)
-#   stats_res = pairwise_fisher(prob_stats_matrix, adjust_method='holm')
-#   print(stats_res)
-#   write.csv(stats_res, paste0('gen_stats_', prob, '.csv'))
-#   write.csv(stats_res <= 0.05, paste0('gen_stats_boolean_', prob, '.csv'))
-# }
-# 
-# 
-# # Do stats on the effect of the added generations
-# stats_res_df = data.frame(data=matrix(nrow = 0, ncol = 5))
-# stats_against_
-# for(prob in unique(res_df$problem)){
-#   for(size in unique(res_df$num_tests)){
-#     for(trt in unique(res_df$treatment)){
-#       tmp_df = res_df[res_df$problem == prob & res_df$num_tests == size & res_df$treatment == trt,]
-#       mat = matrix(ncol = 2, nrow = 2)
-#       colnames(mat) = c('Y', 'N')
-#       rownames(mat) = c('gens', 'evals')
-#       num_solutions_gens = tmp_df$const_time_solutions
-#       num_solutions = tmp_df$solutions_found
-#       mat[1,1] = num_solutions_gens
-#       mat[1,2] = 50 - num_solutions_gens
-#       mat[2,1] = num_solutions
-#       mat[2,2] = 50 - num_solutions
-#       print(mat)
-#       fisher_res = fisher.test(mat)
-#       print(fisher_res$p.value)
-#       print(fisher_res$p.value <= 0.05)
-#       stats_res_df = rbind(stats_res_df, c(prob, size, trt, num_solutions, num_solutions_gens, fisher_res$p.value), stringsAsFactors = F)
-#     } 
-#   } 
-# }
-# colnames(stats_res_df) = c('problem', 'num_tests', 'treatment', 'solutions_found', 'const_time_solutions_found', 'p_value')
-# stats_res_df$p_value = as.numeric(stats_res_df$p_value)
-# stats_res_df$significant = stats_res_df$p_value <= 0.05
-# write.csv(stats_res_df, 'gens_stats_all.csv')
-# 
-# # Whittle down some of the things we know will not be significant
-# stats_trimmed = stats_res_df
-# stats_trimmed = stats_trimmed[stats_trimmed$num_tests != '100',]
-# write.csv(stats_res_df, 'gens_stats_trimmed.csv')
+stats_df = data.frame(data = matrix(nrow = 0, ncol = 10))
+colnames(stats_df) = c('problem', 'treatment', 'num_tests', 'ctrl_solutions_found', 'ctrl_num_replicates', 'cond_solutions_found', 'cond_num_replicates', 'p_value', 'p_value_adj', 'significant_at_0_05')
+for(prob in problems){
+  ctrl_data = res_df[res_df$problem == prob & res_df$treatment == 'full' & res_df$num_tests == '100',]
+  for(trt in setdiff(treatments, 'full')){
+    for(size in sizes){
+      cond_data = res_df[res_df$problem == prob & res_df$treatment == trt & res_df$num_tests == size,]
+      mat = matrix(nrow=2, ncol = 2)
+      mat[1,1] = cond_data$solutions_found
+      mat[1,2] = cond_data$num_replicates - cond_data$solutions_found
+      mat[2,1] = ctrl_data$solutions_found
+      mat[2,2] = ctrl_data$num_replicates - ctrl_data$solutions_found
+      res = fisher.test(mat)
+      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 0, F)
+    }
+  }
+  stats_df$p_value = as.numeric(stats_df$p_value)
+  stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
+  stats_df[stats_df$problem == prob, ]$p_value_adj = p.adjust(stats_df[stats_df$problem == prob, ]$p_value, method = 'holm')
+}
+stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
+write.csv(stats_df, './stats/evals_stats.csv')

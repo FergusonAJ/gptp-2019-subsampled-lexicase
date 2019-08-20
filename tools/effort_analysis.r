@@ -89,9 +89,9 @@ for(prob in unique(filtered_data$problem)){
 
 
 # Change full to "Standard Lexicase"
-filtered_data[filtered_data$treatment == 'full',]$trt_name = 'Standard Lexicase'
+filtered_data[filtered_data$treatment == 'full',]$trt_name = 'Standard'
 # And modify the order to match
-trt_levels = c(trt_lookup[['truncated']], trt_lookup[['cohort']], trt_lookup[['downsampled']], 'Standard Lexicase')
+trt_levels = c(trt_lookup[['truncated']], trt_lookup[['cohort']], trt_lookup[['downsampled']], 'Standard')
 # Set our color order
 color_vec = c(truncated_color, cohort_color, downsampled_color, full_color)
 
@@ -114,7 +114,7 @@ ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_lev
   ylab('Number of Evaluations') +
   ggtitle('Computational Effort') +
   theme(plot.title = element_text(hjust = 0.5)) +
-  guides(fill=guide_legend(title="Selection Scheme", reverse=T)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T)) +
   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   theme(axis.title = element_text(size=12)) +
   theme(axis.text =  element_text(size=10.5)) +
