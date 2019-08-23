@@ -131,6 +131,58 @@ ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=s
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
   ggsave(filename = './plots/solutions_found_gens.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
+# ##########################################################################
+# ###############    Checking for overfit solutions    #####################
+# ##########################################################################
+# 
+# Calculate the number of runs which perfectly solved the training cases
+# (Also count the ones which solved all the test cases)
+res_df$training_solutions = 0
+for(prob in problems){
+  for(trt in treatments){
+    for(size in sizes){
+      for(dil in dilutions){
+        tmp = data[data$problem == prob & data$treatment == trt & data$num_tests == size & data$dilution == dil & data$solved_all_training == 'True',]
+        res_df[res_df$problem == prob & res_df$treatment == trt & res_df$num_tests == size & res_df$dilution == dil,]$training_solutions = nrow(tmp)
+      }
+    }
+  }
+}
+
+# Calculate the percentage of replicates that passed all training cases
+res_df$training_pct = (res_df$training_solutions / res_df$num_replicates)
+res_df$training_pct_str = sprintf('%.3f', res_df$training_pct)
+res_df[is.nan(res_df$training_pct), ]$training_pct_str = ''
+
+# # Plot the overfit data
+ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+  geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
+  scale_size_manual(values = c(1, 0.5)) +
+  geom_bar(stat='identity', position = 'dodge') +
+  geom_text(aes(label=solution_pct_str, y = -0.15), position=position_dodge(0.9)) +
+  geom_bar(mapping = aes(x=factor(size_name, levels = size_levels), y=training_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels)), alpha = 0.5, stat="identity", position=position_dodge(0.9), width=0.65) +
+  #geom_text(aes(label=training_pct_str, y=training_pct + 0.15), position=position_dodge(0.9)) +
+  geom_text(aes(label=training_pct_str, y=1.15), position=position_dodge(0.9)) +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.25, 1.25)) +
+  scale_fill_manual(values=color_vec) +
+  coord_flip() +
+  facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
+  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
+  ggtitle('Perfect Solutions Found - Constant Evaluations') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab('Percentage of Runs that Found Perfect Solutions') +
+  xlab('Subsampling Level') +
+  theme(axis.title = element_text(size=12)) +
+  theme(axis.text =  element_text(size=10.5)) +
+  theme(panel.grid.major.y = element_blank()) +
+  theme(panel.grid.minor.y = element_blank()) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank()) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
+  guides(size = F) +
+  theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
+  ggsave(filename = './plots/solutions_found_gens_overfit.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
 
 
 ##########################################################################
@@ -175,5 +227,16 @@ for(prob in problems){
   stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
   stats_df[stats_df$problem == prob, ]$p_value_adj = p.adjust(stats_df[stats_df$problem == prob, ]$p_value, method = 'holm')
 }
+
+# Frustratingly, most numbers end up as strings, let's ensure that doesn't happen
+stats_df$p_value =              as.numeric(stats_df$p_value)
+stats_df$p_value_adj =          as.numeric(stats_df$p_value_adj)
+stats_df$ctrl_solutions_found = as.numeric(stats_df$ctrl_solutions_found)
+stats_df$ctrl_num_replicates  = as.numeric(stats_df$ctrl_num_replicates)
+stats_df$cond_solutions_found = as.numeric(stats_df$cond_solutions_found)
+stats_df$cond_num_replicates  = as.numeric(stats_df$cond_num_replicates)
+
 stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
+stats_df$ctrl_pct = stats_df$ctrl_solutions_found / stats_df$ctrl_num_replicates
+stats_df$cond_pct = stats_df$cond_solutions_found / stats_df$cond_num_replicates
 write.csv(stats_df, './stats/gens_stats.csv')

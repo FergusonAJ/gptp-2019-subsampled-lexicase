@@ -4,6 +4,8 @@ library(ggplot2)
 ## CONFIG OPTIONS
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
 RM_CMP_STR_LENS = T
+LUMP_FULL = T
+SET_ALL_FULL_300 = T
 
 # Load in shared vars (e.g., colors)
 source('../tools/shared.r')
@@ -12,10 +14,20 @@ source('../tools/shared.r')
 data = read.csv('diversity_data.csv', stringsAsFactors = FALSE)
 data$solution_found = data$solution_found == 'True'
 data$finished = data$finished == 'True'
+data$genotypic_diversity = data$diversity
 
-
+# Remove instances of the compare string lengths problem
 if(RM_CMP_STR_LENS){
   data = data[data$problem != 'compare-string-lengths',]
+}
+
+# When scraping, not all full runs were marked as 100 tests and 300 generations. Fix that.
+if(SET_ALL_FULL_300){
+  data[data$treatment == 'full' & data$max_gen == '300', ]$finished = T
+}
+
+if(LUMP_FULL){
+  data[data$treatment == 'full', ]$num_tests = '100'
 }
 
 found = data[data$solution_found,]
@@ -54,7 +66,7 @@ found$prob_name = as.factor(found$prob_name)
 
 color_vec = c(cohort_color, downsampled_color, reduced_color)
 
-plot_diversity = function(working_name, pretty_name, log_scale = F){
+plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_scale = F){
   ggp = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
       geom_boxplot(position = position_dodge(0.6), width = 0.5, notch=F) +
       scale_fill_manual(values=color_vec) +
@@ -63,7 +75,7 @@ plot_diversity = function(working_name, pretty_name, log_scale = F){
       theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
       ggtitle(pretty_name) +
       theme(plot.title = element_text(hjust = 0.5)) +
-      ylab(pretty_name) +
+      ylab(x_axis) +
       xlab('Subsampling Level') +
       theme(axis.title = element_text(size=12)) +
       theme(axis.text =  element_text(size=10.5)) +
@@ -77,20 +89,21 @@ plot_diversity = function(working_name, pretty_name, log_scale = F){
   ggp
 }
 
-plot_diversity('behavioral_diversity', 'Behavioral Diversity')
-plot_diversity('unique_behavioral_diversity', 'Unique Behavioral Diversity')
-plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance')
-plot_diversity('diversity', 'Genotypic Diversity')
+
+plot_diversity('behavioral_diversity', 'Behavioral Diversity', 'Shannon Entropy')
+plot_diversity('unique_behavioral_diversity', 'Unique Behavioral Diversity', 'Number of Unique Phenotypes')
+plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance')
+plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Entropy')
 plot_diversity('num_taxa', 'Number of Taxa')
 plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity')
 plot_diversity('mean_evolutionary_distinctiveness', 'Mean Evolutionary Distinctiveness')
-plot_diversity('mrca_depth', 'MRCA Depth')
-plot_diversity('mrca_changes', 'MRCA Changes', T)
+plot_diversity('mrca_depth', 'MRCA Depth', 'Generation')
+plot_diversity('mrca_changes', 'MRCA Changes', 'Number of Changes', T)
 plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', T)
 plot_diversity('mean_sparse_pairwise_distances', 'Mean pf Sparse Pairwise Distances')
 plot_diversity('variance_sparse_pairwise_distances', 'Variance of Sparse Pairwise Distances')
 plot_diversity('sum_sparse_pairwise_distances', 'Sum of Sparse Pairwise Distances')
 found$mrca_norm = found$mrca_depth / found$first_gen_found 
-plot_diversity('mrca_norm', 'MRCA Depth (Normalized)')
+plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
 
-plot_diversity('first_gen_found', 'First Generation a Solution Appeared', T)
+plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
