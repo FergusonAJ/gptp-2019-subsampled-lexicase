@@ -54,9 +54,9 @@ data = rbind(data, lex_data)
 
 # Assign pretty names for plotting!
 data$trt_name = ''
-data[data$treatment == 'lexicase',]$trt_name = 'Standard Lexicase'
-data[str_count(data$treatment, 'cohort') >= 1,]$trt_name = 'Cohort Lexicase'
-data[str_count(data$treatment, 'downsampled') >= 1,]$trt_name = 'Down-sampled Lexicase'
+data[data$treatment == 'lexicase',]$trt_name = 'Standard'
+data[str_count(data$treatment, 'cohort') >= 1,]$trt_name = 'Cohort'
+data[str_count(data$treatment, 'downsampled') >= 1,]$trt_name = 'Down-sampled'
 data$pass_prob_name = paste0(as.character(100 * as.numeric(str_replace(data$pass_prob, '_', '\\.'))), '% Non-focal Candidate\nSolution Pass Rate')
 data$pass_prob_name = factor(data$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
 data$subsample_name = paste0(as.character(round(data$subsample_rate * 100, 0)), '% Subsampling')
@@ -64,6 +64,7 @@ data$subsample_name = paste0(as.character(round(data$subsample_rate * 100, 0)), 
 # Plot the experimental data!
 ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) +
   geom_boxplot(position = position_dodge(0.85), width = 0.8) +
+  #geom_jitter(alpha = 0.1, position=position_jitterdodge(jitter.width = 0.15, dodge.width = 0.9)) +
   scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
   scale_x_discrete() +
   facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
@@ -73,13 +74,83 @@ ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) 
   ylab('Specialist Survival Chance') +
   ggtitle('Specialist Preservation Probability') +
   theme(plot.title = element_text(hjust = 0.5)) +
-  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   theme(axis.title = element_text(size=12)) +
   theme(axis.text =  element_text(size=10.5)) +
   theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
   ggsave(filename = './plots/specialist_experimental.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
   
+
+# Gather data such that we can plot as a bar plot
+bar_df = data.frame(data = matrix(nrow = 0, ncol = 12))
+colnames(bar_df) = c('pop_size', 'pass_prob', 'subsample_rate', 'treatment', 'trt_name', 'pass_prob_name', 'subsample_name', 'prob_median', 'prob_min', 'prob_max', 'prob_var', 'prob_sd')
+for(pop_size in unique(data$pop_size)){
+  for(pass_prob in unique(data$pass_prob)){
+    for(subsample_rate in unique(data$subsample_rate)){
+      for(trt in unique(data$treatment)){
+        tmp = data[data$pop_size == pop_size & data$pass_prob == pass_prob & data$subsample_rate == subsample_rate & data$treatment == trt,]
+        if(nrow(tmp) > 0){
+          specialist_probs = tmp$specialist_prob
+          print(paste(pop_size, pass_prob, tmp$subsample_rate[1], trt, length(specialist_probs)))
+          bar_df[nrow(bar_df) + 1, ] = c(pop_size, pass_prob, tmp$subsample_rate[1], trt, tmp$trt_name[1], as.character(tmp$pass_prob_name[1]), tmp$subsample_name[1], median(specialist_probs), min(specialist_probs), max(specialist_probs), var(specialist_probs), sd(specialist_probs))
+        }
+      }
+    }
+  }
+}
+bar_df$prob_median = as.numeric(bar_df$prob_median)
+bar_df$prob_min = as.numeric(bar_df$prob_min)
+bar_df$prob_max = as.numeric(bar_df$prob_max)
+bar_df$prob_var = as.numeric(bar_df$prob_var)
+bar_df$prob_sd = as.numeric(bar_df$prob_sd)
+bar_df$pass_prob_name = factor(bar_df$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
+
+# Error bars for the standard deviation
+ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_median + prob_sd, ymax = prob_median - prob_sd), position = position_dodge(0.85), width = 0.4) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = color_vec) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Population Size') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
+  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
+  theme(axis.title = element_text(size=12)) +
+  theme(axis.text =  element_text(size=10.5)) +
+  theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
+  ggsave(filename = './plots/specialist_experimental_bars_std_dev.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+# Error bars for the minimum and maximum
+ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = color_vec) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Population Size') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
+  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
+  theme(axis.title = element_text(size=12)) +
+  theme(axis.text =  element_text(size=10.5)) +
+  theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
+  ggsave(filename = './plots/specialist_experimental_bars_min_max.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+
 ######################################################################################
 ###################### Predicted Specialist Preservation #############################
 ######################################################################################
@@ -150,9 +221,9 @@ pred_data$num_tests = as.numeric(pred_data$num_tests)
 pred_data$subsample_rate = as.numeric(pred_data$subsample_rate)
 # Add prettier names
 pred_data$trt_name = ''
-pred_data[pred_data$treatment == 'lexicase',]$trt_name = 'Standard Lexicase'
-pred_data[str_count(pred_data$treatment, 'cohort') >= 1,]$trt_name = 'Cohort Lexicase'
-pred_data[str_count(pred_data$treatment, 'downsampled') >= 1,]$trt_name = 'Down-sampled Lexicase'
+pred_data[pred_data$treatment == 'lexicase',]$trt_name = 'Standard'
+pred_data[str_count(pred_data$treatment, 'cohort') >= 1,]$trt_name = 'Cohort'
+pred_data[str_count(pred_data$treatment, 'downsampled') >= 1,]$trt_name = 'Down-sampled'
 pred_data$subsample_name = paste0(as.character(round(pred_data$subsample_rate * 100, 0)), '% Subsampling')
 pred_data$num_tests_name = paste0(pred_data$num_tests, ' Tests')
 pred_data$num_tests_name = factor(pred_data$num_tests_name, levels = c('20 Tests', '100 Tests'))

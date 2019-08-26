@@ -64,11 +64,37 @@ found$dil_name = as.factor(found$dil_name)
 found$trt_name = as.factor(found$trt_name)
 found$prob_name = as.factor(found$prob_name)
 
-color_vec = c(cohort_color, downsampled_color, reduced_color)
+color_vec = c(cohort_color, downsampled_color, full_color)
+
+diversity_stats = function(working_name){
+  stats_df = data.frame(data = matrix(nrow = 0, ncol = 8))
+  colnames(stats_df) = c('problem', 'num_tests', 'treatment_a', 'treatment_b', 'p_value', 'p_value_adj', 'a_solutions', 'b_solutions')
+  for(prob in unique(found$problem)){
+    prob_data = found[found$problem == prob,]
+    ctrl_data = prob_data[prob_data$treatment == 'full', working_name]
+    for(size in unique(found$num_tests)){
+      cohort_data = prob_data[prob_data$treatment == 'cohort' & prob_data$num_tests == size, working_name]
+      downsampled_data = prob_data[prob_data$treatment == 'downsampled' & prob_data$num_tests == size, working_name]
+      mann_whitney_res_1 = wilcox.test(ctrl_data, downsampled_data, paired = F)
+      stats_df[nrow(stats_df) + 1,] = c(prob, size, 'full', 'downsampled', mann_whitney_res_1$p.value, 1, length(ctrl_data), length(downsampled_data))
+      mann_whitney_res_2 = wilcox.test(ctrl_data, cohort_data, paired = F)
+      stats_df[nrow(stats_df) + 1,] = c(prob, size, 'full', 'cohort', mann_whitney_res_2$p.value, 1, length(ctrl_data), length(cohort_data))
+      mann_whitney_res_3 = wilcox.test(cohort_data, downsampled_data, paired = F)
+      stats_df[nrow(stats_df) + 1,] = c(prob, size, 'cohort', 'downsampled', mann_whitney_res_3$p.value, 1, length(cohort_data), length(downsampled_data))
+    }
+    stats_df$p_value = as.numeric(stats_df$p_value)
+    stats_df[stats_df$problem == prob,]$p_value_adj = p.adjust(stats_df[stats_df$problem == prob,]$p_value, method = 'holm')
+  }
+  stats_df$p_value = as.numeric(stats_df$p_value)
+  stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
+  stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
+  write.csv(stats_df, paste0('./stats/diversity_', working_name, '.csv'))
+  return(stats_df)
+}
 
 plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_scale = F){
   ggp = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
-      geom_boxplot(position = position_dodge(0.6), width = 0.5, notch=F) +
+      geom_boxplot(position = position_dodge(1, preserve = 'single'), width = 0.9, notch=F) +
       scale_fill_manual(values=color_vec) +
       coord_flip() +
       facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
@@ -87,23 +113,24 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
   }
   ggp = ggp + ggsave(filename = paste0('./plots/diversity_', working_name, '.pdf'), units = 'in', width = 14, height = 6)
   ggp
+  return(diversity_stats(working_name))
 }
 
 
-plot_diversity('behavioral_diversity', 'Behavioral Diversity', 'Shannon Entropy')
+plot_diversity('behavioral_diversity', 'Behavioral Diversity', 'Shannon Diversity')
 plot_diversity('unique_behavioral_diversity', 'Unique Behavioral Diversity', 'Number of Unique Phenotypes')
 plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance')
-plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Entropy')
+plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Diversity')
 plot_diversity('num_taxa', 'Number of Taxa')
 plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity')
 plot_diversity('mean_evolutionary_distinctiveness', 'Mean Evolutionary Distinctiveness')
 plot_diversity('mrca_depth', 'MRCA Depth', 'Generation')
 plot_diversity('mrca_changes', 'MRCA Changes', 'Number of Changes', T)
-plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', T)
-plot_diversity('mean_sparse_pairwise_distances', 'Mean pf Sparse Pairwise Distances')
+plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', 'Variance of Pairwise Distances', T)
+plot_diversity('mean_sparse_pairwise_distances', 'Mean of Sparse Pairwise Distances')
 plot_diversity('variance_sparse_pairwise_distances', 'Variance of Sparse Pairwise Distances')
 plot_diversity('sum_sparse_pairwise_distances', 'Sum of Sparse Pairwise Distances')
-found$mrca_norm = found$mrca_depth / found$first_gen_found 
-plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
+#found$mrca_norm = found$mrca_depth / found$first_gen_found 
+#plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
 
 plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
