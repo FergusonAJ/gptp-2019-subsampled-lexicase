@@ -119,7 +119,7 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
 
 plot_diversity('behavioral_diversity', 'Behavioral Diversity', 'Shannon Diversity')
 plot_diversity('unique_behavioral_diversity', 'Unique Behavioral Diversity', 'Number of Unique Phenotypes')
-plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance')
+plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance', T)
 plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Diversity')
 plot_diversity('num_taxa', 'Number of Taxa')
 plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity')
