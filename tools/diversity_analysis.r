@@ -66,6 +66,7 @@ found$prob_name = as.factor(found$prob_name)
 
 color_vec = c(cohort_color, downsampled_color, full_color)
 
+# Calculate statistics for the given column
 diversity_stats = function(working_name){
   stats_df = data.frame(data = matrix(nrow = 0, ncol = 8))
   colnames(stats_df) = c('problem', 'num_tests', 'treatment_a', 'treatment_b', 'p_value', 'p_value_adj', 'a_solutions', 'b_solutions')
@@ -92,9 +93,12 @@ diversity_stats = function(working_name){
   return(stats_df)
 }
 
+# Plot the diversity boxplot for the given column
+# Also set up to do statistics to make life easier
 plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_scale = F){
   ggp = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
       geom_boxplot(position = position_dodge(1, preserve = 'single'), width = 0.9, notch=F) +
+      #geom_violin(position = position_dodge(1, preserve = 'single')) +
       scale_fill_manual(values=color_vec) +
       coord_flip() +
       facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
@@ -116,21 +120,36 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
   return(diversity_stats(working_name))
 }
 
+# Plot and run stats
+# Set each result = stats_df to make analysis easier
 
-plot_diversity('behavioral_diversity', 'Behavioral Diversity', 'Shannon Diversity')
-plot_diversity('unique_behavioral_diversity', 'Unique Behavioral Diversity', 'Number of Unique Phenotypes')
-plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance', T)
-plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Diversity')
-plot_diversity('num_taxa', 'Number of Taxa')
-plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity')
-plot_diversity('mean_evolutionary_distinctiveness', 'Mean Evolutionary Distinctiveness')
-plot_diversity('mrca_depth', 'MRCA Depth', 'Generation')
-plot_diversity('mrca_changes', 'MRCA Changes', 'Number of Changes', T)
-plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', 'Variance of Pairwise Distances', T)
-plot_diversity('mean_sparse_pairwise_distances', 'Mean of Sparse Pairwise Distances')
-plot_diversity('variance_sparse_pairwise_distances', 'Variance of Sparse Pairwise Distances')
-plot_diversity('sum_sparse_pairwise_distances', 'Sum of Sparse Pairwise Distances')
+# Genotypic
+stats_df = plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Diversity')
+
+# Phenotypic
+stats_df = plot_diversity('behavioral_diversity', 'Phenotypic Diversity', 'Shannon Diversity')
+stats_df = plot_diversity('unique_behavioral_diversity', 'Unique Phenotypic Diversity', 'Number of Unique Phenotypes')
+
+# Phylogenetic
+stats_df = plot_diversity('num_taxa', 'Number of Taxa')
+stats_df = plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity', 'Phylogenetic Diversity')
+stats_df = plot_diversity('mrca_depth', 'MRCA Depth', 'Generation')
+stats_df = plot_diversity('mrca_changes', 'MRCA Changes', 'Number of Changes', T)
+
+# Phylogenetic Richness
+stats_df = plot_diversity('sum_sparse_pairwise_distances', 'Sum of Sparse Pairwise Distances')
+
+# Phylogenetic Divergence
+stats_df = plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance', T)
+stats_df = plot_diversity('mean_sparse_pairwise_distances', 'Mean of Sparse Pairwise Distances')
+stats_df = plot_diversity('mean_evolutionary_distinctiveness', 'Mean Evolutionary Distinctiveness')
+
+# Phylogenetic Regularity
+stats_df = plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', 'Variance of Pairwise Distances', T)
+stats_df = plot_diversity('variance_sparse_pairwise_distances', 'Variance of Sparse Pairwise Distances')
+stats_df = plot_diversity('variance_evolutionary_distinctiveness', 'Variance of Evolutionary Distinctiveness')
+
 #found$mrca_norm = found$mrca_depth / found$first_gen_found 
 #plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
 
-plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
+stats_df = plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
