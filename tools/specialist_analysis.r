@@ -5,7 +5,7 @@ library(stringr)
 ## CONFIG OPTIONS
 IMG_WIDTH = 14 #inches
 
-IMG_HEIGHT = 6 #inches
+IMG_HEIGHT = 8 #inches
 setwd('~/research/lexicase/gptp-2019-subsampled-lexicase/output')
 
 # Load in shared data (colors)
@@ -73,12 +73,12 @@ ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) 
   xlab('Population Size') +
   ylab('Specialist Survival Chance') +
   ggtitle('Specialist Preservation Probability') +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") + 
   ggsave(filename = './plots/specialist_experimental.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
   
 
@@ -120,12 +120,13 @@ ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill
   ylab('Specialist Survival Chance') +
   ggtitle('Specialist Preservation Probability') +
   theme(plot.title = element_text(hjust = 0.5)) +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
-  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
+  guides(fill =guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") + 
   ggsave(filename = './plots/specialist_experimental_bars_std_dev.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 # Error bars for the minimum and maximum
@@ -142,12 +143,13 @@ ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill
   ylab('Specialist Survival Chance') +
   ggtitle('Specialist Preservation Probability') +
   theme(plot.title = element_text(hjust = 0.5)) +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
-  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) + 
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
+  guides(fill =guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") + 
   ggsave(filename = './plots/specialist_experimental_bars_min_max.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
@@ -230,17 +232,17 @@ pred_data$num_tests_name = factor(pred_data$num_tests_name, levels = c('20 Tests
 
 #Plot the predicted data!
 ggplot(pred_data, aes(x = pop_size, y = perfect, color = trt_name)) + 
-  geom_line(size=1.2) +
+  geom_line(size=2) +
   facet_grid(rows = vars(num_tests_name), cols = vars(subsample_name)) + 
   scale_color_manual(values = color_vec) +
   scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
   xlab('Population Size') +
   ylab('Predicted Specialist Survival Chance') +
   ggtitle('Worst-case Specialist Preservation') +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) + 
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size=18))) +
+  theme(plot.title  = element_text(size=20, hjust = 0.5)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") + 
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
   ggsave(filename = './plots/specialist_predicted.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)

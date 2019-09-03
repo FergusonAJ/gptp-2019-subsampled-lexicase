@@ -117,6 +117,27 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
   }
   ggp = ggp + ggsave(filename = paste0('./plots/diversity_', working_name, '.pdf'), units = 'in', width = 14, height = 6)
   ggp
+  
+  ggp_stats = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
+    geom_boxplot(position = position_dodge(1, preserve = 'single'), width = 0.9, notch=F) +
+    #geom_violin(position = position_dodge(1, preserve = 'single')) +
+    scale_fill_manual(values=color_vec) +
+    facet_grid(factor(prob_name, levels = prob_levels) ~ .) + 
+    theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
+    ggtitle(pretty_name) +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    ylab(x_axis) +
+    xlab('Subsampling Level') +
+    theme(axis.title = element_text(size=12)) +
+    theme(axis.text =  element_text(size=10.5)) +
+    theme(panel.grid.major.y = element_blank()) +
+    guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
+    theme(legend.position="bottom", legend.text = element_text(size=10.5))
+  if(log_scale){
+    ggp_stats = ggp_stats + scale_y_log10()
+  }
+  ggp_stats = ggp_stats + ggsave(filename = paste0('./plots/diversity_', working_name, '_stats.pdf'), units = 'in', width = 14, height = 6)
+  print(ggp_stats)
   return(diversity_stats(working_name))
 }
 

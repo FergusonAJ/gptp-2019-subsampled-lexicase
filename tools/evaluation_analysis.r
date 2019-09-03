@@ -5,7 +5,8 @@ library(ggplot2)
 
 ## CONFIG OPTIONS
 IMG_WIDTH = 14 #inches
-IMG_HEIGHT = 6 #inches
+IMG_HEIGHT = 8 #inches
+DODGE_AMOUNT = 1.0
 RM_TRUNCATED = T
 RM_100_SUBS = F
 LUMP_FULL = T
@@ -95,28 +96,6 @@ res_df$dil_name = as.factor(res_df$dil_name)
 res_df$trt_name = as.factor(res_df$trt_name)
 res_df$prob_name = as.factor(res_df$prob_name)
 
-#res_df = res_df[res_df$treatment == 'full' | res_df$num_tests != '100', ]
-
-# Plot the perfect solution graphs (no overfitting)
-# ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solutions_found, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
-#   geom_bar(stat='identity', position = 'dodge') +
-#   geom_text(aes(label=solutions_found, y = -5), position=position_dodge(0.9)) +
-#   scale_y_continuous(breaks = c(0, 25, 50), limits = c(-7 ,57)) +
-#   scale_fill_manual(values=color_vec) +
-#   coord_flip() +
-#   facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
-#   theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-#   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-#   theme(plot.title = element_text(hjust = 0.5)) +
-#   ylab('Number of Perfect Solutions Found') +
-#   xlab('Subsampling Level') +
-#   theme(axis.title = element_text(size=12)) +
-#   theme(axis.text =  element_text(size=10.5)) +
-#   theme(panel.grid.major.y = element_blank()) +
-#   guides(fill=guide_legend(title="Selection Scheme", reverse = T)) +
-#   theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-#   ggsave(filename = 'solutions_found_evals.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
-
 # Calculate solution percentages
 res_df$solution_pct = (res_df$solutions_found / res_df$num_replicates)
 res_df$solution_pct_str = sprintf('%.3f', res_df$solution_pct)
@@ -144,26 +123,27 @@ color_vec = c(cohort_color, downsampled_color, reduced_color, full_color)
 ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
   geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
   scale_size_manual(values = c(1, 0.5)) +
-  geom_bar(data = res_df, stat='identity', position = 'dodge') +
-  geom_text(aes(label=solution_pct_str, y = -0.15), position=position_dodge(0.9)) +
+  geom_bar(data = res_df, stat='identity', position = position_dodge(DODGE_AMOUNT)) +
+  geom_text(aes(label=solution_pct_str, y = -0.15), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
   scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.25, 1)) +
   scale_fill_manual(values=color_vec) +
   coord_flip() +
   facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-  theme(plot.title = element_text(hjust = 0.5)) +
   ylab('Percentage of Runs that Found Perfect Solutions') +
   xlab('Subsampling Level') +
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
+  theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size = 18)) +
+  theme(axis.text   = element_text(size = 18)) +
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(legend.text = element_text(size = 18), legend.position="bottom") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.grid.major.y = element_blank()) +
   theme(panel.grid.minor.y = element_blank()) +
   theme(panel.grid.major.x = element_blank()) +
   theme(panel.grid.minor.x = element_blank()) +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size=16))) +
   guides(size=F) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
   ggsave(filename = './plots/solutions_found_evals.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
@@ -190,33 +170,33 @@ res_df$training_pct = (res_df$training_solutions / res_df$num_replicates)
 res_df$training_pct_str = sprintf('%.3f', res_df$training_pct)
 res_df[is.nan(res_df$training_pct), ]$training_pct_str = ''
 
-# # Plot the overfit data
+# Plot the overfit data
 ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
   geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
   scale_size_manual(values = c(1, 0.5)) +
-  geom_bar(stat='identity', position = 'dodge') +
-  geom_text(aes(label=solution_pct_str, y = -0.15), position=position_dodge(0.9)) +
-  geom_bar(mapping = aes(x=factor(size_name, levels = size_levels), y=training_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels)), alpha = 0.5, stat="identity", position=position_dodge(0.9), width=0.65) +
-  #geom_text(aes(label=training_pct_str, y=training_pct + 0.15), position=position_dodge(0.9)) +
-  geom_text(aes(label=training_pct_str, y=1.15), position=position_dodge(0.9)) +
-  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.25, 1.25)) +
+  geom_bar(stat='identity', position = position_dodge(DODGE_AMOUNT)) +
+  geom_text(aes(label=solution_pct_str, y = -0.2), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
+  geom_bar(mapping = aes(x=factor(size_name, levels = size_levels), y=training_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels)), alpha = 0.5, stat="identity", position=position_dodge(DODGE_AMOUNT), width=0.65) +
+  geom_text(aes(label=training_pct_str, y=1.2), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.3, 1.3)) +
   scale_fill_manual(values=color_vec) +
   coord_flip() +
   facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-  theme(plot.title = element_text(hjust = 0.5)) +
   ylab('Percentage of Runs that Found Perfect Solutions') +
   xlab('Subsampling Level') +
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
+  theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size = 18)) +
+  theme(axis.text   = element_text(size = 18)) +
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(legend.text = element_text(size = 18), legend.position="bottom") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.grid.major.y = element_blank()) +
   theme(panel.grid.minor.y = element_blank()) +
   theme(panel.grid.major.x = element_blank()) +
   theme(panel.grid.minor.x = element_blank()) +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size=18))) +
   guides(size = F) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
   ggsave(filename = './plots/solutions_found_evals_overfit.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
@@ -242,8 +222,8 @@ if(nrow(unfinished) > 0){
 #########################     Statistics    ##############################
 ##########################################################################
 
-stats_df = data.frame(data = matrix(nrow = 0, ncol = 10))
-colnames(stats_df) = c('problem', 'treatment', 'num_tests', 'ctrl_solutions_found', 'ctrl_num_replicates', 'cond_solutions_found', 'cond_num_replicates', 'p_value', 'p_value_adj', 'significant_at_0_05')
+stats_df = data.frame(data = matrix(nrow = 0, ncol = 13))
+colnames(stats_df) = c('problem', 'treatment', 'num_tests', 'ctrl_solutions_found', 'ctrl_num_replicates', 'cond_solutions_found', 'cond_num_replicates', 'p_value', 'p_value_adj', 'significant_at_0_05', 'odds_ratio', 'lower_95_conf_int', 'upper_95_conf_int')
 for(prob in problems){
   ctrl_data = res_df[res_df$problem == prob & res_df$treatment == 'full' & res_df$num_tests == '100',]
   for(trt in setdiff(treatments, 'full')){
@@ -255,7 +235,7 @@ for(prob in problems){
       mat[2,1] = ctrl_data$solutions_found
       mat[2,2] = ctrl_data$num_replicates - ctrl_data$solutions_found
       res = fisher.test(mat)
-      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 1, F)
+      stats_df[nrow(stats_df) + 1, ] = c(prob, trt, size, ctrl_data$solutions_found, ctrl_data$num_replicates, cond_data$solutions_found, cond_data$num_replicates, res$p.value, 1, F, res$estimate, res$conf.int[1], res$conf.int[2])
     }
   }
   stats_df$p_value = as.numeric(stats_df$p_value)
@@ -263,8 +243,8 @@ for(prob in problems){
   stats_df[stats_df$problem == prob, ]$p_value_adj = p.adjust(stats_df[stats_df$problem == prob, ]$p_value, method = 'holm')
 }
 # Frustratingly, most numbers end up as strings, let's ensure that doesn't happen
-stats_df$p_value =              as.numeric(stats_df$p_value)
-stats_df$p_value_adj =          as.numeric(stats_df$p_value_adj)
+stats_df$p_value              = as.numeric(stats_df$p_value)
+stats_df$p_value_adj          = as.numeric(stats_df$p_value_adj)
 stats_df$ctrl_solutions_found = as.numeric(stats_df$ctrl_solutions_found)
 stats_df$ctrl_num_replicates  = as.numeric(stats_df$ctrl_num_replicates)
 stats_df$cond_solutions_found = as.numeric(stats_df$cond_solutions_found)
@@ -274,3 +254,79 @@ stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
 stats_df$ctrl_pct = stats_df$ctrl_solutions_found / stats_df$ctrl_num_replicates
 stats_df$cond_pct = stats_df$cond_solutions_found / stats_df$cond_num_replicates
 write.csv(stats_df, './stats/evals_stats.csv')
+
+# Combine stats into res_df for plotting significance stars
+res_df$significant_at_0_05 = F
+res_df$stats_str = ' '
+for(row in 1:nrow(res_df)){
+  if(res_df[row,]$num_replicates > 0 & res_df[row,]$treatment != 'full'){
+    prob = res_df[row,]$problem
+    trt = res_df[row,]$treatment
+    num_tests = res_df[row,]$num_tests
+    res_df[row,]$significant_at_0_05 = stats_df[stats_df$problem == prob & stats_df$treatment == trt & stats_df$num_tests == num_tests,]$significant_at_0_05
+    if(res_df[row,]$significant_at_0_05){
+      res_df[row,]$stats_str = '*'
+    }
+  }
+}
+
+# Plot the non-overfit data with significance symbols
+ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+  geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
+  scale_size_manual(values = c(1, 0.5)) +
+  geom_bar(stat='identity', position = position_dodge(DODGE_AMOUNT)) +
+  geom_text(aes(label=solution_pct_str, y = -0.25), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
+  geom_text(aes(label=stats_str, y = -0.05), position=position_dodge(DODGE_AMOUNT), vjust=0.8, size = (5/14) * 30) +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.35, 1)) +
+  scale_fill_manual(values=color_vec) +
+  coord_flip() +
+  facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
+  ggtitle('Perfect Solutions Found - Constant Evaluations') +
+  ylab('Percentage of Runs that Found Perfect Solutions') +
+  xlab('Subsampling Level') +
+  theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size = 18)) +
+  theme(axis.text   = element_text(size = 18)) +
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(legend.text = element_text(size = 18), legend.position="bottom") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.grid.major.y = element_blank()) +
+  theme(panel.grid.minor.y = element_blank()) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank()) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size=18))) +
+  guides(size = F) +
+  ggsave(filename = './plots/solutions_found_evals_stats.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+
+# Plot the overfit data with significance symbols
+ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+  geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
+  scale_size_manual(values = c(1, 0.5)) +
+  geom_bar(stat='identity', position = position_dodge(DODGE_AMOUNT)) +
+  geom_text(aes(label=solution_pct_str, y = -0.3), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
+  geom_text(aes(label=stats_str, y = -0.05), position=position_dodge(DODGE_AMOUNT), vjust=0.8, size = (5/14) * 30) +
+  geom_bar(mapping = aes(x=factor(size_name, levels = size_levels), y=training_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels)), alpha = 0.5, stat="identity", position=position_dodge(DODGE_AMOUNT), width=0.65) +
+  geom_text(aes(label=training_pct_str, y=1.22), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.45, 1.35)) +
+  scale_fill_manual(values=color_vec) +
+  coord_flip() +
+  facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
+  ggtitle('Perfect Solutions Found - Constant Evaluations') +
+  ylab('Percentage of Runs that Found Perfect Solutions') +
+  xlab('Subsampling Level') +
+  theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size = 18)) +
+  theme(axis.text   = element_text(size = 18)) +
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(legend.text = element_text(size = 18), legend.position="bottom") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.grid.major.y = element_blank()) +
+  theme(panel.grid.minor.y = element_blank()) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank()) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size=18))) +
+  guides(size = F) +
+  ggsave(filename = './plots/solutions_found_evals_overfit_stats.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+

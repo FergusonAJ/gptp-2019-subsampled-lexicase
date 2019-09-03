@@ -109,8 +109,31 @@ filtered_data$prob_name = as.factor(filtered_data$prob_name)
 
 # (gg)Plot! 
 x_scale_size = 0.8
+# ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_levels))) +
+#   geom_boxplot(position = position_dodge(1.5), width=1) +
+#   facet_grid(cols = vars(factor(prob_name, levels=prob_levels))) +
+#   ggtitle('Computational Effort') +
+#   scale_y_log10() +
+#   scale_x_continuous(limits = c(-x_scale_size, x_scale_size)) +
+#   scale_fill_manual(values = color_vec) +
+#   ylab('Number of Evaluations') +
+#   ggtitle('Computational Effort') +
+#   guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T, title.theme = element_text(size = 18))) +
+#   theme(plot.title  = element_text(size=20, hjust = 0.5)) +
+#   theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+#   theme(axis.title  = element_text(size=18)) +
+#   theme(axis.text   = element_text(size=18)) +
+#   theme(legend.text = element_text(size=18), legend.position="bottom") +
+#   theme(axis.ticks.y= element_blank()) +
+#   theme(axis.title.y = element_blank()) +
+#   theme(axis.text.y = element_blank()) +
+#   theme(panel.grid.minor.y = element_blank()) +
+#   theme(panel.grid.major.y =  element_blank()) +
+#   coord_flip() +
+#   ggsave('./plots/computational_effort.pdf', units = 'in', width = 14, height = 4)
 ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_levels))) +
   geom_boxplot(position = position_dodge(1.5), width=1) +
+  coord_cartesian(clip = 'off', ylim = c(3*10^5, 10^8)) +
   facet_grid(cols = vars(factor(prob_name, levels=prob_levels))) +
   ggtitle('Computational Effort') +
   scale_y_log10() +
@@ -118,18 +141,17 @@ ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_lev
   scale_fill_manual(values = color_vec) +
   ylab('Number of Evaluations') +
   ggtitle('Computational Effort') +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T)) +
-  theme(strip.text = element_text(size=10.5, face = 'bold')) + # For the facet labels
-  theme(axis.title = element_text(size=12)) +
-  theme(axis.text =  element_text(size=10.5)) +
-  theme(axis.ticks.y= element_blank()) +
-  theme(axis.title.y = element_blank()) +
-  theme(axis.text.y = element_blank()) +
-  theme(panel.grid.minor.y = element_blank()) +
-  theme(panel.grid.major.y =  element_blank()) +
-  theme(legend.position="bottom", legend.text = element_text(size=10.5)) +
-  coord_flip() +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T, title.theme = element_text(size = 18))) +
+  theme(plot.title  = element_text(size=20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  theme(axis.ticks.x= element_blank()) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank()) +
+  theme(panel.grid.major.x =  element_blank()) +
   ggsave('./plots/computational_effort.pdf', units = 'in', width = 14, height = 4)
 
 
@@ -164,4 +186,58 @@ stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
 stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
 print(stats_df)
 write.csv(stats_df, './stats/effort_stats.csv')
+
+
+# Format stats such that significance stars can be added to the plot
+# Create mock stats for the full treatments (so we can be general about how we plot)
+for(prob in unique(filtered_data$problem)){
+  stats_df[nrow(stats_df) + 1, ] = c(prob, 'full', 0, 1, 1, F)  
+}
+# Add some formatting data
+stats_df$trt_name = ''
+stats_df$prob_name = ''
+stats_df$sig_str = ' '
+stats_df$median = 0
+stats_df$significant_at_0_05 = as.logical(stats_df$significant_at_0_05)
+for(row in 1:nrow(stats_df)){
+  stats_df[row,]$trt_name = trt_lookup[[stats_df[row,]$treatment]]
+  stats_df[row,]$prob_name = prob_lookup[[stats_df[row,]$problem]]
+  if(stats_df[row,]$significant_at_0_05){
+    stats_df[row,]$sig_str = '*'
+  }
+  stats_df[row,]$median = median(filtered_data[filtered_data$problem == stats_df[row,]$problem & filtered_data$treatment == stats_df[row,]$treatment,]$evals)
+}
+
+
+# We have un-flipped our axes and thus need to reverse the order treatments are displayed
+trt_levels = trt_levels[seq(length(trt_levels), 1, by = -1)]
+color_vec = color_vec[seq(length(color_vec), 1, by = -1)]
+
+# (gg)Plot with significance stars! 
+x_scale_size = 0.8
+ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_levels))) +
+  geom_boxplot(position = position_dodge(1.5), width=1) +
+  coord_cartesian(clip = 'off', ylim = c(3*10^5, 10^8)) +
+  geom_text(data = stats_df, aes(x = 0, y = 1.5*10^5, label = sig_str), position = position_dodge(1.5), size = (5/14) * 30) +
+  facet_grid(cols = vars(factor(prob_name, levels=prob_levels))) +
+  ggtitle('Computational Effort') +
+  scale_y_log10() +
+  scale_x_continuous(limits = c(-x_scale_size, x_scale_size)) +
+  scale_fill_manual(values = color_vec) +
+  ylab('Number of Evaluations') +
+  ggtitle('Computational Effort') +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T, title.theme = element_text(size = 18))) +
+  theme(plot.title  = element_text(size=20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  theme(axis.ticks.x= element_blank()) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank()) +
+  theme(panel.grid.major.x =  element_blank()) +
+  ggsave('./plots/computational_effort_stats.pdf', units = 'in', width = 14, height = 4)
+
+
 print('Finished!')
