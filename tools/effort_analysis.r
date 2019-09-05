@@ -96,9 +96,11 @@ for(prob in unique(filtered_data$problem)){
 # Change full to "Standard Lexicase"
 filtered_data[filtered_data$treatment == 'full',]$trt_name = 'Standard'
 # And modify the order to match
-trt_levels = c(trt_lookup[['truncated']], trt_lookup[['cohort']], trt_lookup[['downsampled']], 'Standard')
+#trt_levels = c(trt_lookup[['truncated']], trt_lookup[['cohort']], trt_lookup[['downsampled']], 'Standard')
+trt_levels = c('Standard', trt_lookup[['downsampled']], trt_lookup[['cohort']], trt_lookup[['truncated']])
 # Set our color order
-color_vec = c(truncated_color, cohort_color, downsampled_color, full_color)
+#color_vec = c(truncated_color, cohort_color, downsampled_color, full_color)
+color_vec = c(full_color, downsampled_color, cohort_color, truncated_color)
 
 
 # Turn those names into factors
@@ -109,28 +111,6 @@ filtered_data$prob_name = as.factor(filtered_data$prob_name)
 
 # (gg)Plot! 
 x_scale_size = 0.8
-# ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_levels))) +
-#   geom_boxplot(position = position_dodge(1.5), width=1) +
-#   facet_grid(cols = vars(factor(prob_name, levels=prob_levels))) +
-#   ggtitle('Computational Effort') +
-#   scale_y_log10() +
-#   scale_x_continuous(limits = c(-x_scale_size, x_scale_size)) +
-#   scale_fill_manual(values = color_vec) +
-#   ylab('Number of Evaluations') +
-#   ggtitle('Computational Effort') +
-#   guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T, title.theme = element_text(size = 18))) +
-#   theme(plot.title  = element_text(size=20, hjust = 0.5)) +
-#   theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
-#   theme(axis.title  = element_text(size=18)) +
-#   theme(axis.text   = element_text(size=18)) +
-#   theme(legend.text = element_text(size=18), legend.position="bottom") +
-#   theme(axis.ticks.y= element_blank()) +
-#   theme(axis.title.y = element_blank()) +
-#   theme(axis.text.y = element_blank()) +
-#   theme(panel.grid.minor.y = element_blank()) +
-#   theme(panel.grid.major.y =  element_blank()) +
-#   coord_flip() +
-#   ggsave('./plots/computational_effort.pdf', units = 'in', width = 14, height = 4)
 ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_levels))) +
   geom_boxplot(position = position_dodge(1.5), width=1) +
   coord_cartesian(clip = 'off', ylim = c(3*10^5, 10^8)) +
@@ -141,7 +121,7 @@ ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_lev
   scale_fill_manual(values = color_vec) +
   ylab('Number of Evaluations') +
   ggtitle('Computational Effort') +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T, title.theme = element_text(size = 18))) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=F, title.theme = element_text(size = 18))) +
   theme(plot.title  = element_text(size=20, hjust = 0.5)) +
   theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size=18)) +
@@ -209,10 +189,6 @@ for(row in 1:nrow(stats_df)){
 }
 
 
-# We have un-flipped our axes and thus need to reverse the order treatments are displayed
-trt_levels = trt_levels[seq(length(trt_levels), 1, by = -1)]
-color_vec = color_vec[seq(length(color_vec), 1, by = -1)]
-
 # (gg)Plot with significance stars! 
 x_scale_size = 0.8
 ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_levels))) +
@@ -226,7 +202,7 @@ ggplot(filtered_data, aes(x = 0, y = evals, fill=factor(trt_name, levels=trt_lev
   scale_fill_manual(values = color_vec) +
   ylab('Number of Evaluations') +
   ggtitle('Computational Effort') +
-  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=T, title.theme = element_text(size = 18))) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse=F, title.theme = element_text(size = 18))) +
   theme(plot.title  = element_text(size=20, hjust = 0.5)) +
   theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size=18)) +
