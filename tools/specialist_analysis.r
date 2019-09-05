@@ -83,8 +83,8 @@ ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) 
   
 
 # Gather data such that we can plot as a bar plot
-bar_df = data.frame(data = matrix(nrow = 0, ncol = 12))
-colnames(bar_df) = c('pop_size', 'pass_prob', 'subsample_rate', 'treatment', 'trt_name', 'pass_prob_name', 'subsample_name', 'prob_median', 'prob_min', 'prob_max', 'prob_var', 'prob_sd')
+bar_df = data.frame(data = matrix(nrow = 0, ncol = 13))
+colnames(bar_df) = c('pop_size', 'pass_prob', 'subsample_rate', 'treatment', 'trt_name', 'pass_prob_name', 'subsample_name', 'prob_median', 'prob_min', 'prob_max', 'prob_var', 'prob_sd', 'prob_mean')
 for(pop_size in unique(data$pop_size)){
   for(pass_prob in unique(data$pass_prob)){
     for(subsample_rate in unique(data$subsample_rate)){
@@ -93,7 +93,7 @@ for(pop_size in unique(data$pop_size)){
         if(nrow(tmp) > 0){
           specialist_probs = tmp$specialist_prob
           print(paste(pop_size, pass_prob, tmp$subsample_rate[1], trt, length(specialist_probs)))
-          bar_df[nrow(bar_df) + 1, ] = c(pop_size, pass_prob, tmp$subsample_rate[1], trt, tmp$trt_name[1], as.character(tmp$pass_prob_name[1]), tmp$subsample_name[1], median(specialist_probs), min(specialist_probs), max(specialist_probs), var(specialist_probs), sd(specialist_probs))
+          bar_df[nrow(bar_df) + 1, ] = c(pop_size, pass_prob, tmp$subsample_rate[1], trt, tmp$trt_name[1], as.character(tmp$pass_prob_name[1]), tmp$subsample_name[1], median(specialist_probs), min(specialist_probs), max(specialist_probs), var(specialist_probs), sd(specialist_probs), mean(specialist_probs))
         }
       }
     }
@@ -104,9 +104,10 @@ bar_df$prob_min = as.numeric(bar_df$prob_min)
 bar_df$prob_max = as.numeric(bar_df$prob_max)
 bar_df$prob_var = as.numeric(bar_df$prob_var)
 bar_df$prob_sd = as.numeric(bar_df$prob_sd)
+bar_df$prob_mean = as.numeric(bar_df$prob_mean)
 bar_df$pass_prob_name = factor(bar_df$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
 
-# Error bars for the standard deviation
+# Error bars for the standard deviation (median)
 ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill=trt_name)) +
   geom_col(position = position_dodge(0.85), width = 0.8) + 
   geom_errorbar(aes(ymin = prob_median + prob_sd, ymax = prob_median - prob_sd), position = position_dodge(0.85), width = 0.4) +
@@ -127,9 +128,9 @@ ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill
   theme(axis.title  = element_text(size=18)) +
   theme(axis.text   = element_text(size=18)) +
   theme(legend.text = element_text(size=18), legend.position="bottom") + 
-  ggsave(filename = './plots/specialist_experimental_bars_std_dev.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/specialist_experimental_bars_median_std_dev.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
-# Error bars for the minimum and maximum
+# Error bars for the minimum and maximum (median)
 ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill=trt_name)) +
   geom_col(position = position_dodge(0.85), width = 0.8) + 
   geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
@@ -150,7 +151,53 @@ ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill
   theme(axis.title  = element_text(size=18)) +
   theme(axis.text   = element_text(size=18)) +
   theme(legend.text = element_text(size=18), legend.position="bottom") + 
-  ggsave(filename = './plots/specialist_experimental_bars_min_max.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/specialist_experimental_bars_median_min_max.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+# Error bars for the standard deviation (mean)
+ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_mean, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_mean + prob_sd, ymax = prob_mean - prob_sd), position = position_dodge(0.85), width = 0.4) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = color_vec) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Population Size') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill =guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") + 
+  ggsave(filename = './plots/specialist_experimental_bars_mean_std_dev.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+# Error bars for the minimum and maximum (mean)
+ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_mean, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = color_vec) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Population Size') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill =guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") + 
+  ggsave(filename = './plots/specialist_experimental_bars_mean_min_max.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
 ######################################################################################
