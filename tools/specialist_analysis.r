@@ -57,9 +57,12 @@ data$trt_name = ''
 data[data$treatment == 'lexicase',]$trt_name = 'Standard'
 data[str_count(data$treatment, 'cohort') >= 1,]$trt_name = 'Cohort'
 data[str_count(data$treatment, 'downsampled') >= 1,]$trt_name = 'Down-sampled'
-data$pass_prob_name = paste0(as.character(100 * as.numeric(str_replace(data$pass_prob, '_', '\\.'))), '% Non-focal Candidate\nSolution Pass Rate')
-data$pass_prob_name = factor(data$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
+#data$pass_prob_name = paste0(as.character(100 * as.numeric(str_replace(data$pass_prob, '_', '\\.'))), '% Non-focal Candidate\nSolution Pass Rate')
+#data$pass_prob_name = factor(data$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
+data$pass_prob_name = paste0(as.character(100 * as.numeric(str_replace(data$pass_prob, '_', '\\.'))), '%')
+data$pass_prob_name = factor(data$pass_prob_name, levels = c('20%', '50%', '100%'))
 data$subsample_name = paste0(as.character(round(data$subsample_rate * 100, 0)), '% Subsampling')
+data$pop_size_name = paste0('Population Size ', data$pop_size)
 
 # Plot the experimental data!
 ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) +
@@ -83,8 +86,8 @@ ggplot(data, aes(x = as.factor(pop_size), y = specialist_prob, color=trt_name)) 
   
 
 # Gather data such that we can plot as a bar plot
-bar_df = data.frame(data = matrix(nrow = 0, ncol = 13))
-colnames(bar_df) = c('pop_size', 'pass_prob', 'subsample_rate', 'treatment', 'trt_name', 'pass_prob_name', 'subsample_name', 'prob_median', 'prob_min', 'prob_max', 'prob_var', 'prob_sd', 'prob_mean')
+bar_df = data.frame(data = matrix(nrow = 0, ncol = 14))
+colnames(bar_df) = c('pop_size', 'pass_prob', 'subsample_rate', 'treatment', 'trt_name', 'pass_prob_name', 'subsample_name', 'pop_size_name', 'prob_median', 'prob_min', 'prob_max', 'prob_var', 'prob_sd', 'prob_mean')
 for(pop_size in unique(data$pop_size)){
   for(pass_prob in unique(data$pass_prob)){
     for(subsample_rate in unique(data$subsample_rate)){
@@ -92,8 +95,8 @@ for(pop_size in unique(data$pop_size)){
         tmp = data[data$pop_size == pop_size & data$pass_prob == pass_prob & data$subsample_rate == subsample_rate & data$treatment == trt,]
         if(nrow(tmp) > 0){
           specialist_probs = tmp$specialist_prob
-          print(paste(pop_size, pass_prob, tmp$subsample_rate[1], trt, length(specialist_probs)))
-          bar_df[nrow(bar_df) + 1, ] = c(pop_size, pass_prob, tmp$subsample_rate[1], trt, tmp$trt_name[1], as.character(tmp$pass_prob_name[1]), tmp$subsample_name[1], median(specialist_probs), min(specialist_probs), max(specialist_probs), var(specialist_probs), sd(specialist_probs), mean(specialist_probs))
+          #print(paste(pop_size, pass_prob, tmp$subsample_rate[1], trt, length(specialist_probs)))
+          bar_df[nrow(bar_df) + 1, ] = c(pop_size, pass_prob, tmp$subsample_rate[1], trt, tmp$trt_name[1], as.character(tmp$pass_prob_name[1]), tmp$subsample_name[1], tmp$pop_size_name[1],  median(specialist_probs), min(specialist_probs), max(specialist_probs), var(specialist_probs), sd(specialist_probs), mean(specialist_probs))
         }
       }
     }
@@ -105,7 +108,9 @@ bar_df$prob_max = as.numeric(bar_df$prob_max)
 bar_df$prob_var = as.numeric(bar_df$prob_var)
 bar_df$prob_sd = as.numeric(bar_df$prob_sd)
 bar_df$prob_mean = as.numeric(bar_df$prob_mean)
-bar_df$pass_prob_name = factor(bar_df$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
+#bar_df$pass_prob_name = factor(bar_df$pass_prob_name, levels = c('20% Non-focal Candidate\nSolution Pass Rate', '50% Non-focal Candidate\nSolution Pass Rate', '100% Non-focal Candidate\nSolution Pass Rate'))
+bar_df$pass_prob_name = factor(bar_df$pass_prob_name, levels = c('20%', '50%', '100%'))
+bar_df$pop_size_name = factor(bar_df$pop_size_name, levels = c('Population Size 20', 'Population Size 100'))
 
 # Error bars for the standard deviation (median)
 ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_median, fill=trt_name)) +
@@ -177,7 +182,7 @@ ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_mean, fill=t
   ggsave(filename = './plots/specialist_experimental_bars_mean_std_dev.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 # Error bars for the minimum and maximum (mean)
-ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_mean, fill=trt_name)) +
+ggplot(bar_df,aes(x = factor(pop_size_name, levels=c(20, 100)), y = prob_mean, fill=trt_name)) +
   geom_col(position = position_dodge(0.85), width = 0.8) + 
   geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
   scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
@@ -198,6 +203,126 @@ ggplot(bar_df,aes(x = factor(pop_size, levels=c(20, 100)), y = prob_mean, fill=t
   theme(axis.text   = element_text(size=18)) +
   theme(legend.text = element_text(size=18), legend.position="bottom") + 
   ggsave(filename = './plots/specialist_experimental_bars_mean_min_max.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+
+line_df = data.frame(data = matrix(nrow = 0, ncol = 4))
+colnames(line_df) = c('subsample_name', 'pop_size_name', 'y_intercept', 'line_color')
+for(pop_size in c(100, 20)){
+  for(subsample_rate in c(0.1, 0.5)){
+    subsample_name = paste0(subsample_rate * 100, '% Subsampling')
+    pop_size_name = paste0('Population Size ', pop_size)
+    color = ifelse(pop_size == 100, 'black', NA)
+    line_df[nrow(line_df) + 1, ] = c(subsample_name, pop_size_name, subsample_rate, color)
+    #line_df[nrow(line_df) + 1, ] = c(subsample_name, pop_size_name, (1 - (1 - (1/(20)))^pop_size), 1)
+    #line_df[nrow(line_df) + 1, ] = c(subsample_name, pop_size_name, (1 - (1 - (1/(20 * subsample_rate)))^pop_size) * subsample_rate, 2)
+    #line_df[nrow(line_df) + 1, ] = c(subsample_name, pop_size_name, (1 - (1 - (1/(20 * subsample_rate)))^(pop_size * subsample_rate)) * subsample_rate, 3)
+  }
+}
+line_df$y_intercept = as.numeric(line_df$y_intercept)
+
+# Testing other facets (median + min/max)
+ggplot(bar_df,aes(x = pass_prob_name, y = prob_median, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
+  geom_hline(data = line_df, mapping = aes(yintercept = y_intercept, color = line_color), linetype='dashed', show.legend = F) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  #facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  facet_grid(rows = vars(subsample_name), cols = vars(factor(pop_size_name, levels = c('Population Size 20', 'Population Size 100')))) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = c('black', NA)) +
+  #scale_color_manual(values = color_vec[c(3,2,1)]) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Non-Focal Candidate Solution Pass Rate') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  ggsave(filename = './plots/specialist_experimental_bars_median_min_max_lines.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+# Testing other facets (median + std dev)
+ggplot(bar_df,aes(x = pass_prob_name, y = prob_median, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_median - prob_sd, ymax = prob_median + prob_sd), position = position_dodge(0.85), width = 0.4) +
+  geom_hline(data = line_df, mapping = aes(yintercept = y_intercept, color = line_color), linetype='dashed', show.legend = F) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  #facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  facet_grid(rows = vars(subsample_name), cols = vars(factor(pop_size_name, levels = c('Population Size 20', 'Population Size 100')))) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = c('black', NA)) +
+  #scale_color_manual(values = color_vec[c(3,2,1)]) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Non-Focal Candidate Solution Pass Rate') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  ggsave(filename = './plots/specialist_experimental_bars_median_std_dev_lines.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+# Testing other facets (mean + min/max)
+ggplot(bar_df,aes(x = pass_prob_name, y = prob_mean, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
+  geom_hline(data = line_df, mapping = aes(yintercept = y_intercept, color = line_color), linetype='dashed', show.legend = F) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  #facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  facet_grid(rows = vars(subsample_name), cols = vars(factor(pop_size_name, levels = c('Population Size 20', 'Population Size 100')))) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = c('black', NA)) +
+  #scale_color_manual(values = color_vec[c(3,2,1)]) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Non-Focal Candidate Solution Pass Rate') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  ggsave(filename = './plots/specialist_experimental_bars_mean_min_max_lines.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+
+# Testing other facets (mean + min/max)
+ggplot(bar_df,aes(x = pass_prob_name, y = prob_mean, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_mean - prob_sd, ymax = prob_mean + prob_sd), position = position_dodge(0.85), width = 0.4) +
+  geom_hline(data = line_df, mapping = aes(yintercept = y_intercept, color = line_color), linetype='dashed', show.legend = F) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  #facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  facet_grid(rows = vars(subsample_name), cols = vars(factor(pop_size_name, levels = c('Population Size 20', 'Population Size 100')))) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = c('black', NA)) +
+  #scale_color_manual(values = color_vec[c(3,2,1)]) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Non-Focal Candidate Solution Pass Rate') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  ggsave(filename = './plots/specialist_experimental_bars_mean_std_dev_lines.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
 
 ######################################################################################
