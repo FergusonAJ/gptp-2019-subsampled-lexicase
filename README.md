@@ -1,4 +1,6 @@
 # Characterizing the Effects of Random Subsampling on Lexicase Selection
+[![DOI](https://zenodo.org/badge/182839021.svg)](https://zenodo.org/badge/latestdoi/182839021)
+
 This repository holds the code behind our work for the 2019 Genetic Programming Theory and Practice (GPTP) conference.
 
 All code is modified and simplified from GECCO 2019 code by Alexander Lalejini and Jose Hernandez here:
