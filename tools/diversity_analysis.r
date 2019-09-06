@@ -120,48 +120,73 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
   ggp = ggp + ggsave(filename = paste0('./plots/diversity_', working_name, '.pdf'), units = 'in', width = 14, height = 6)
   print(ggp)
   stats_df = diversity_stats(working_name)
-  plot_df = data.frame(data = matrix(nrow = 0, ncol = 6))
+  plot_df = data.frame(data = matrix(nrow = 0, ncol = 7))
   found$stats_str = '   '
   found$median = 0
-  colnames(plot_df) = c('treatment', 'num_tests', 'problem', 'median', 'significant_at_0_05', 'x')
+  colnames(plot_df) = c('treatment', 'num_tests', 'problem', 'median', 'significant_at_0_05', 'y_offset', 'str')
   for(prob in unique(found$problem)){
     for(num_tests in unique(found$num_tests)){
         level_df = stats_df[stats_df$problem == prob & stats_df$num_tests == num_tests,]
         # Cohort x Full
         cohort_full = level_df[level_df$treatment_a == 'full' & level_df$treatment_b == 'cohort',]
         cohort_median = median(found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'cohort', working_name])
-        if(cohort_full$significant_at_0_05[1] == T){
-          found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'cohort', ]$stats_str = '*'
-          found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'cohort', ]$median = cohort_median
-        }
-        plot_df[nrow(plot_df) + 1, ] = c('cohort', num_tests, prob, cohort_median, cohort_full$significant_at_0_05, 0)
+        cohort_row = nrow(plot_df) + 1
+        plot_df[cohort_row, ] = c('cohort', num_tests, prob, cohort_median, cohort_full$significant_at_0_05, 1.8, ifelse(cohort_full$significant_at_0_05, '†', ' '))
+        
         # Down-sampled x Full
         downsampled_full = level_df[level_df$treatment_a == 'full' & level_df$treatment_b == 'downsampled',]
         downsampled_median = median(found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'downsampled', working_name])
-        plot_df[nrow(plot_df) + 1, ] = c('downsampled', num_tests, prob, downsampled_median, downsampled_full$significant_at_0_05, 0)
-        if(downsampled_full$significant_at_0_05[1] == T){
-          found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'downsampled', ]$stats_str = '*'
-          found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'downsampled', ]$median = downsampled_median
-        }
+        downsampled_row = nrow(plot_df) + 1
+        plot_df[downsampled_row, ] = c('downsampled', num_tests, prob, downsampled_median, downsampled_full$significant_at_0_05, -1, ifelse(downsampled_full$significant_at_0_05, '†', ' '))
+        
         # Cohort x Downsampled
+        cohort_downsampled = level_df[level_df$treatment_a == 'cohort' & level_df$treatment_b == 'downsampled',]
+        if(cohort_downsampled$significant_at_0_05[1 == T]){
+          if(plot_df[cohort_row,]$significant_at_0_05 == T){
+            plot_df[cohort_row,]$str = '† ‡'
+          }else{
+            plot_df[cohort_row,]$str = '‡'
+          }
+          if(plot_df[downsampled_row,]$significant_at_0_05 == T){
+            plot_df[downsampled_row,]$str = '† ‡'
+          }else{
+            plot_df[downsampled_row,]$str = '‡'
+          }
+        }
     }
   }
   found$median = as.numeric(found$median)
-    # plot_df$median = as.numeric(plot_df$median)
-  # plot_df$str = ' '
-  # plot_df[plot_df$significant_at_0_05 == T,]$str = '*'
-  # plot_df$trt_name = ' '
-  # plot_df$prob_name = ' '
-  # plot_df$size_name = ' '
-  # for(row in 1:nrow(plot_df)){
-  #   plot_df[row,]$trt_name = trt_lookup[[plot_df[row,]$treatment]]
-  #   plot_df[row,]$prob_name = prob_lookup[[plot_df[row,]$problem]]
-  #   plot_df[row,]$size_name = size_lookup[[plot_df[row,]$num_tests]]
-  # }
-  # 
+  plot_df$median = as.numeric(plot_df$median)
+  plot_df$y_offset = as.numeric(plot_df$y_offset)
+  #plot_df$str = ' '
+  #plot_df[plot_df$significant_at_0_05 == T,]$str = '*'
+  plot_df$trt_name = ' '
+  plot_df$prob_name = ' '
+  plot_df$size_name = ' '
+  for(row in 1:nrow(plot_df)){
+    plot_df[row,]$trt_name = trt_lookup[[plot_df[row,]$treatment]]
+    plot_df[row,]$prob_name = prob_lookup[[plot_df[row,]$problem]]
+    plot_df[row,]$size_name = size_lookup[[plot_df[row,]$num_tests]]
+  }
+
   ggp_stats = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
-    geom_boxplot(position = position_dodge(1.1, preserve = 'single'), width = 0.5, notch=F) +
-    #geom_text(mapping=aes(label = str, y= median, group = interaction(factor(size_name, levels = size_levels), factor(trt_name, levels = trt_levels))), size = (5/14) * 30, position = position_dodge(1.1, preserve = 'single')) +
+    geom_boxplot(position = position_dodge(1.15, preserve = 'single'), width = 0.5, notch=F) +
+    geom_text(
+      data= plot_df, 
+      mapping=aes(
+        x = factor(size_name, levels = size_levels),
+        label = str, 
+        group = interaction(
+          factor(size_name, levels = size_levels),
+          factor(prob_name, levels = prob_levels)
+          ),
+        y= median,
+        vjust = y_offset
+        ), 
+      size = (5/14) * 14
+      #position = position_dodge(1.1, preserve = 'single')
+      ) +
+    #geom_text(data= plot_df, mapping=aes(label = str, y= median, group = interaction(factor(size_name, levels = size_levels), factor(trt_name, levels = trt_levels))), size = (5/14) * 30, position = position_dodge(1.1, preserve = 'single')) +
     #geom_text(mapping=aes(label = stats_str), size = (5/14) * 30, position = position_dodge(1.1, preserve = 'single')) +
     scale_fill_manual(values=color_vec) +
     coord_flip() +
@@ -181,7 +206,7 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
   if(log_scale){
     ggp_stats = ggp_stats + scale_y_log10()
   }
-  ggp_stats = ggp_stats + ggsave(filename = paste0('./plots/diversity_', working_name, '_stats.pdf'), units = 'in', width = 14, height = 6)
+  ggp_stats = ggp_stats + ggsave(filename = paste0('./plots/diversity_', working_name, '_stats.pdf'), units = 'in', width = 14, height = 8, device = cairo_pdf)
   print(ggp_stats)
   return(stats_df)
 }
@@ -199,7 +224,7 @@ stats_df = plot_diversity('unique_behavioral_diversity', 'Unique Phenotypic Dive
 # Phylogenetic
 stats_df = plot_diversity('num_taxa', 'Number of Taxa')
 stats_df = plot_diversity('num_sparse_taxa', 'Number of Sparse Taxa')
-stats_df = plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity', 'Phylogenetic Diversity')
+stats_df = plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity', 'Nodes in Minimum Spanning Tree')
 stats_df = plot_diversity('mrca_depth', 'MRCA Depth', 'Generation')
 stats_df = plot_diversity('mrca_changes', 'Most Recent Common Ancestor (MRCA) Changes', 'Number of Changes', T)
 
@@ -217,15 +242,15 @@ stats_df = plot_diversity('variance_sparse_pairwise_distances', 'Variance of Spa
 stats_df = plot_diversity('variance_evolutionary_distinctiveness', 'Variance of Evolutionary Distinctiveness')
 
 #found$mrca_norm = found$mrca_depth / found$first_gen_found
-#plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
+#stats_df = plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
 
 stats_df = plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
 
 # Debugging
-working_name = 'behavioral_diversity'
-pretty_name = 'Phenotypic Diversity'
-x_axis = pretty_name
-log_scale = F
-x_axis_rot = 0
-x_axis_hjust = 0.5
+# working_name = 'behavioral_diversity'
+# pretty_name = 'Phenotypic Diversity'
+# x_axis = pretty_name
+# log_scale = F
+# x_axis_rot = 0
+# x_axis_hjust = 0.5
 
