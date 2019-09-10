@@ -331,8 +331,8 @@ ggplot(bar_df,aes(x = pass_prob_name, y = prob_mean, fill=trt_name)) +
 # Kruskal-wallis to test for any effect across all treatments
 # Then do a Mann-Whitney comparison (i.e., unpaired Wilcox)
 # Holm correction is used for multiple comparisons
-stats_df = data.frame(data = matrix(nrow = 0, ncol = 8))
-colnames(stats_df) = c('pop_size', 'subsample_rate', 'pass_prob', 'treatment_a', 'treatment_b', 'kruskal_p_value', 'p_value', 'p_value_adj')
+stats_df = data.frame(data = matrix(nrow = 0, ncol = 11))
+colnames(stats_df) = c('pop_size', 'subsample_rate', 'pass_prob', 'treatment_a', 'treatment_b', 'kruskal_p_value', 'p_value', 'p_value_adj', 'conf_int_lower', 'conf_int_higher', 'median_difference')
 for(pop_size in unique(data$pop_size)){
   cat('Pop size: ', pop_size, '\n')
   for(pass_prob in unique(data$pass_prob)){
@@ -350,8 +350,8 @@ for(pop_size in unique(data$pop_size)){
               trt_b = unique(stats_data$treatment)[j]
               trt_a_data = stats_data[stats_data$treatment == trt_a,]
               trt_b_data = stats_data[stats_data$treatment == trt_b,]
-              wilcox_res = wilcox.test(trt_a_data$specialist_prob, trt_b_data$specialist_prob, paired=T)
-              stats_df[nrow(stats_df) + 1,] = c(pop_size, subsample_rate, pass_prob, as.character(trt_a), as.character(trt_b), kruskal_res$p.value, wilcox_res$p.value, 0)
+              wilcox_res = wilcox.test(trt_a_data$specialist_prob, trt_b_data$specialist_prob, paired=T, conf.int = T)
+              stats_df[nrow(stats_df) + 1,] = c(pop_size, subsample_rate, pass_prob, as.character(trt_a), as.character(trt_b), kruskal_res$p.value, wilcox_res$p.value, 0, wilcox_res$conf.int[1], wilcox_res$conf.int[2], wilcox_res$estimate)
             }
           } 
         }
@@ -369,9 +369,10 @@ for(pop_size in unique(data$pop_size)){
 stats_df$kruskal_p_value = as.numeric(stats_df$kruskal_p_value)
 stats_df$p_value = as.numeric(stats_df$p_value)
 stats_df$p_value_adj = as.numeric(stats_df$p_value_adj)
+stats_df$median_difference = as.numeric(stats_df$median_difference)
 stats_df$significant_at_0_05 = stats_df$p_value_adj <= 0.05
 print(stats_df)
-write.csv(stats_df, file = './stats/specialist_stats.csv',)
+write.csv(stats_df, file = './stats/specialist_stats.csv')
 
 
 ######################################################################################
@@ -468,4 +469,41 @@ ggplot(pred_data, aes(x = pop_size, y = perfect, color = trt_name)) +
   theme(axis.text   = element_text(size=18)) +
   ggsave(filename = './plots/specialist_predicted.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
 
+  
+stats_copy = stats_df
+stats_copy$pass_prob_name = paste0(as.character(100 * as.numeric(str_replace(stats_copy$pass_prob, '_', '\\.'))), '%')
+stats_copy$pass_prob_name = factor(stats_copy$pass_prob_name, levels = c('20%', '50%', '100%'))
+stats_copy$subsample_rate = as.numeric(stats_copy$subsample_rate)
+stats_copy$subsample_name = paste0(as.character(round(stats_copy$subsample_rate * 100, 0)), '% Subsampling')
+stats_copy$pop_size_name = paste0('Population Size ', stats_copy$pop_size)
 
+filtered_stats = stats_copy[stats_copy$treatment_a != 'lexicase' & stats_copy$treatment_b != 'lexicase',]
+filtered_stats$treatment = 'downsampled'
+filtered_stats$trt_name = 'Down-sampled'
+
+# Plot with stats (median + min/max)
+ggplot(bar_df,aes(x = pass_prob_name, y = prob_median, fill=trt_name)) +
+  geom_col(position = position_dodge(0.85), width = 0.8) + 
+  geom_errorbar(aes(ymin = prob_min, ymax = prob_max), position = position_dodge(0.85), width = 0.4) +
+  geom_hline(data = line_df, mapping = aes(yintercept = y_intercept, color = line_color), linetype='dashed', show.legend = F) +
+  geom_text(data = filtered_stats, mapping = aes(y = 0, label = ifelse(significant_at_0_05, '*', ' ')), fill = 'black', size = (5/14) * 30, vjust = 1.1) +
+  scale_y_continuous(limits = c(-0.03, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_x_discrete() +
+  #facet_grid(cols = vars(pass_prob_name), rows = vars(subsample_name)) +
+  facet_grid(rows = vars(subsample_name), cols = vars(factor(pop_size_name, levels = c('Population Size 20', 'Population Size 100')))) +
+  scale_fill_manual(values = color_vec) +
+  scale_color_manual(values = c('black', NA)) +
+  #scale_color_manual(values = color_vec[c(3,2,1)]) +
+  theme(panel.grid.minor.x = element_blank()) +
+  xlab('Non-Focal Candidate Solution Pass Rate') +
+  ylab('Specialist Survival Chance') +
+  ggtitle('Specialist Preservation Probability') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  guides(color=guide_legend(title="Lexicase Selection Variant", reverse = T, title.theme = element_text(size = 18))) + 
+  theme(plot.title  = element_text(size = 20, hjust = 0.5)) +
+  theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
+  theme(axis.title  = element_text(size=18)) +
+  theme(axis.text   = element_text(size=18)) +
+  theme(legend.text = element_text(size=18), legend.position="bottom") +
+  ggsave(filename = './plots/specialist_experimental_bars_median_min_max_lines_stats.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
