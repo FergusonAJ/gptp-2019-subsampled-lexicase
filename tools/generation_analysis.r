@@ -105,12 +105,14 @@ gridlines_df$y = as.numeric(gridlines_df$y)
 # Set our color order
 color_vec = c(cohort_color, downsampled_color, full_color)
 
+# Remove no subsampling runs for non-standard treatments
+res_df_trimmed = res_df[res_df$num_tests != '100' | res_df$treatment == 'full',]
 
 # Plot the solution graphs
-ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
   geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
   scale_size_manual(values = c(1, 0.5)) +
-  geom_bar(data = res_df, stat='identity', position = position_dodge(DODGE_AMOUNT)) +
+  geom_bar(data = res_df_trimmed, stat='identity', position = position_dodge(DODGE_AMOUNT)) +
   geom_text(aes(label=solution_pct_str, y = -0.15), position=position_dodge(DODGE_AMOUNT), size = (5/14) * 18) +
   scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), limits = c(-0.25, 1)) +
   scale_fill_manual(values=color_vec) +
@@ -156,8 +158,11 @@ res_df$training_pct = (res_df$training_solutions / res_df$num_replicates)
 res_df$training_pct_str = sprintf('%.3f', res_df$training_pct)
 res_df[is.nan(res_df$training_pct), ]$training_pct_str = ''
 
+# Remove no subsampling runs for non-standard treatments
+res_df_trimmed = res_df[res_df$num_tests != '100' | res_df$treatment == 'full',]
+
 # Plot the overfit data
-ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
   geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
   scale_size_manual(values = c(1, 0.5)) +
   geom_bar(stat='identity', position = position_dodge(DODGE_AMOUNT)) +
@@ -259,8 +264,11 @@ for(row in 1:nrow(res_df)){
   }
 }
 
+# Remove no subsampling runs for non-standard treatments
+res_df_trimmed = res_df[res_df$num_tests != '100' | res_df$treatment == 'full',]
+
 # Plot the non-overfit data with significance symbols
-ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
   geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
   scale_size_manual(values = c(1, 0.5)) +
   geom_bar(stat='identity', position = position_dodge(DODGE_AMOUNT)) +
@@ -289,7 +297,7 @@ ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=s
 
 
 # Plot the overfit data with significance symbols
-ggplot(data = res_df, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
+ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_levels), y=solution_pct, fill=factor(trt_name, levels = trt_levels), group=factor(trt_name, levels = trt_levels))) +
   geom_hline(data = gridlines_df, aes(yintercept=y, size = factor(line_width)), color ='white') +
   scale_size_manual(values = c(1, 0.5)) +
   geom_bar(stat='identity', position = position_dodge(DODGE_AMOUNT)) +

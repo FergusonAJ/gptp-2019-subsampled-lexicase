@@ -95,10 +95,36 @@ diversity_stats = function(working_name){
 
 # Plot the diversity boxplot for the given column
 # Also set up to do statistics to make life easier
-plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_scale = F, x_axis_rot = 0, x_axis_hjust = 0.5){
-  ggp = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
-      geom_boxplot(position = position_dodge(1, preserve = 'single'), width = 0.9, notch=F) +
-      #geom_violin(position = position_dodge(1, preserve = 'single')) +
+plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_scale = F, x_axis_rot = 0, x_axis_hjust = 0.5, rm_non_full_100 = F, rm_full_100 = F){
+  # If we remove lexicase, also remove the non-standard runs at 100 tests
+  if(rm_full_100){
+    rm_non_full_100 = T
+  }
+  dodge_amount = 1.15
+  cohort_offset = 1.8 
+  downsampled_offset = -1
+  sig_from_full_char = '†'
+  sig_from_subsampled_char = '‡'
+  sig_from_both_str = '† ‡'
+  to_plot = found
+  if(rm_non_full_100){
+    cohort_offset = 0.6
+    downsampled_offset = -3.2
+    dodge_amount = 1
+    to_plot = found[found$num_tests != '100' | found$treatment == 'full',]
+  }
+  if(rm_full_100){
+    cohort_offset = 0.4
+    downsampled_offset = -3.4
+    dodge_amount = 0.8
+    sig_from_full_char = ''
+    sig_from_subsampled_char = '†'
+    sig_from_both_str = '†'
+    to_plot = to_plot[to_plot$treatment != 'full',]
+  }
+  ggp = ggplot(data = to_plot, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
+      #geom_boxplot(position = position_dodge(1, preserve = 'single'), width = 0.9, notch=F) +
+      geom_boxplot(position = position_dodge(1), width = 0.9, notch=F) +
       scale_fill_manual(values=color_vec) +
       coord_flip() +
       facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
@@ -131,26 +157,26 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
         cohort_full = level_df[level_df$treatment_a == 'full' & level_df$treatment_b == 'cohort',]
         cohort_median = median(found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'cohort', working_name])
         cohort_row = nrow(plot_df) + 1
-        plot_df[cohort_row, ] = c('cohort', num_tests, prob, cohort_median, cohort_full$significant_at_0_05, 1.8, ifelse(cohort_full$significant_at_0_05, '†', ' '))
+        plot_df[cohort_row, ] = c('cohort', num_tests, prob, cohort_median, cohort_full$significant_at_0_05, cohort_offset, ifelse(cohort_full$significant_at_0_05, sig_from_full_char, ' '))
         
         # Down-sampled x Full
         downsampled_full = level_df[level_df$treatment_a == 'full' & level_df$treatment_b == 'downsampled',]
         downsampled_median = median(found[found$problem == prob & found$num_tests == num_tests & found$treatment == 'downsampled', working_name])
         downsampled_row = nrow(plot_df) + 1
-        plot_df[downsampled_row, ] = c('downsampled', num_tests, prob, downsampled_median, downsampled_full$significant_at_0_05, -1, ifelse(downsampled_full$significant_at_0_05, '†', ' '))
+        plot_df[downsampled_row, ] = c('downsampled', num_tests, prob, downsampled_median, downsampled_full$significant_at_0_05, downsampled_offset, ifelse(downsampled_full$significant_at_0_05, sig_from_full_char, ' '))
         
         # Cohort x Downsampled
         cohort_downsampled = level_df[level_df$treatment_a == 'cohort' & level_df$treatment_b == 'downsampled',]
         if(cohort_downsampled$significant_at_0_05[1 == T]){
           if(plot_df[cohort_row,]$significant_at_0_05 == T){
-            plot_df[cohort_row,]$str = '† ‡'
+            plot_df[cohort_row,]$str = sig_from_both_str
           }else{
-            plot_df[cohort_row,]$str = '‡'
+            plot_df[cohort_row,]$str = sig_from_subsampled_char
           }
           if(plot_df[downsampled_row,]$significant_at_0_05 == T){
-            plot_df[downsampled_row,]$str = '† ‡'
+            plot_df[downsampled_row,]$str = sig_from_both_str
           }else{
-            plot_df[downsampled_row,]$str = '‡'
+            plot_df[downsampled_row,]$str = sig_from_subsampled_char
           }
         }
     }
@@ -169,25 +195,30 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
     plot_df[row,]$size_name = size_lookup[[plot_df[row,]$num_tests]]
   }
 
-  ggp_stats = ggplot(data = found, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
-    geom_boxplot(position = position_dodge(1.15, preserve = 'single'), width = 0.5, notch=F) +
+  to_plot = found
+  plot_df_trimmed = plot_df
+  if(rm_non_full_100){
+    to_plot = found[found$num_tests != '100' | found$treatment == 'full',]
+    plot_df_trimmed = plot_df[plot_df$num_tests != 100 | plot_df$treatment != 'lexicase',]
+  }
+  if(rm_full_100){
+    to_plot = to_plot[to_plot$treatment != 'full',]
+    plot_df_trimmed = plot_df[plot_df$num_tests != 100,]
+  }
+  gpp_stats = NULL
+  ggp_stats = ggplot(data = to_plot, mapping=aes_string(x="factor(size_name, levels = size_levels)", y=working_name, fill="factor(trt_name, levels = trt_levels)")) +
+    #geom_boxplot(position = position_dodge(1.15, preserve = 'single'), width = 0.5, notch=F) +
+    geom_boxplot(position = position_dodge(dodge_amount), width = 0.5, notch=F) +
     geom_text(
-      data= plot_df, 
+      data= plot_df_trimmed, 
       mapping=aes(
         x = factor(size_name, levels = size_levels),
         label = str, 
-        group = interaction(
-          factor(size_name, levels = size_levels),
-          factor(prob_name, levels = prob_levels)
-          ),
+        group = interaction(factor(size_name, levels = size_levels),factor(prob_name, levels = prob_levels)),
         y= median,
-        vjust = y_offset
-        ), 
+        vjust = y_offset), 
       size = (5/14) * 14
-      #position = position_dodge(1.1, preserve = 'single')
       ) +
-    #geom_text(data= plot_df, mapping=aes(label = str, y= median, group = interaction(factor(size_name, levels = size_levels), factor(trt_name, levels = trt_levels))), size = (5/14) * 30, position = position_dodge(1.1, preserve = 'single')) +
-    #geom_text(mapping=aes(label = stats_str), size = (5/14) * 30, position = position_dodge(1.1, preserve = 'single')) +
     scale_fill_manual(values=color_vec) +
     coord_flip() +
     facet_grid(. ~ factor(prob_name, levels = prob_levels)) + 
@@ -215,42 +246,33 @@ plot_diversity = function(working_name, pretty_name, x_axis = pretty_name, log_s
 # Set each result = stats_df to make analysis easier
 
 # Genotypic
-stats_df = plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Diversity')
+stats_df = plot_diversity('genotypic_diversity', 'Genotypic Diversity', 'Shannon Diversity', rm_non_full_100 = T)
 
 # Phenotypic
-stats_df = plot_diversity('behavioral_diversity', 'Phenotypic Diversity', 'Shannon Diversity')
-stats_df = plot_diversity('unique_behavioral_diversity', 'Unique Phenotypic Diversity', 'Number of Unique Phenotypes')
+stats_df = plot_diversity('behavioral_diversity', 'Phenotypic Diversity', 'Shannon Diversity', rm_non_full_100 = T)
+stats_df = plot_diversity('unique_behavioral_diversity', 'Unique Phenotypic Diversity', 'Number of Unique Phenotypes', rm_non_full_100 = T)
 
 # Phylogenetic
-stats_df = plot_diversity('num_taxa', 'Number of Taxa')
-stats_df = plot_diversity('num_sparse_taxa', 'Number of Sparse Taxa')
-stats_df = plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity', 'Nodes in Minimum Spanning Tree')
-stats_df = plot_diversity('mrca_depth', 'MRCA Depth', 'Generation')
-stats_df = plot_diversity('mrca_changes', 'Most Recent Common Ancestor (MRCA) Changes', 'Number of Changes', T)
+stats_df = plot_diversity('num_taxa', 'Number of Taxa', rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('num_sparse_taxa', 'Number of Sparse Taxa', rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('current_phylogenetic_diversity', 'Phylogenetic Diversity', 'Nodes in Minimum Spanning Tree', rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('mrca_depth', 'MRCA Depth', 'Generation', rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('mrca_changes', 'Most Recent Common Ancestor (MRCA) Changes', 'Number of Changes', T, rm_non_full_100 = T, rm_full_100 = T)
 
 # Phylogenetic Richness
-stats_df = plot_diversity('sum_sparse_pairwise_distances', 'Sum of Sparse Pairwise Distances', 'Sum', x_axis_rot = 45, x_axis_hjust = 1)
+stats_df = plot_diversity('sum_sparse_pairwise_distances', 'Sum of Sparse Pairwise Distances', 'Sum', x_axis_rot = 45, x_axis_hjust = 1, rm_non_full_100 = T, rm_full_100 = T)
 
 # Phylogenetic Divergence
-stats_df = plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Pairwise Distance', T)
-stats_df = plot_diversity('mean_sparse_pairwise_distances', 'Mean of Sparse Pairwise Distances', 'Mean of Distances', x_axis_rot = 45, x_axis_hjust = 1)
-stats_df = plot_diversity('mean_evolutionary_distinctiveness', 'Mean Evolutionary Distinctiveness')
+stats_df = plot_diversity('mean_pairwise_distance', 'Mean Pairwise Distance', 'Mean Distance', T, rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('mean_sparse_pairwise_distances', 'Mean Sparse Pairwise Distance', 'Mean of Distance', x_axis_rot = 0, x_axis_hjust = 0.5, rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('mean_evolutionary_distinctiveness', 'Mean Evolutionary Distinctiveness', rm_non_full_100 = T, rm_full_100 = T)
 
 # Phylogenetic Regularity
-stats_df = plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', 'Variance of Pairwise Distances', T)
-stats_df = plot_diversity('variance_sparse_pairwise_distances', 'Variance of Sparse Pairwise Distances', 'Variance of Distances', x_axis_rot = 45, x_axis_hjust = 1)
-stats_df = plot_diversity('variance_evolutionary_distinctiveness', 'Variance of Evolutionary Distinctiveness')
-
-#found$mrca_norm = found$mrca_depth / found$first_gen_found
-#stats_df = plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
-
-stats_df = plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
-
-# Debugging
-# working_name = 'behavioral_diversity'
-# pretty_name = 'Phenotypic Diversity'
-# x_axis = pretty_name
-# log_scale = F
-# x_axis_rot = 0
-# x_axis_hjust = 0.5
-
+stats_df = plot_diversity('variance_pairwise_distance', 'Variance of Pairwise Distances', 'Variance of Pairwise Distances', T, x_axis_rot = 45, x_axis_hjust = 1, rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('variance_sparse_pairwise_distances', 'Variance of Sparse Pairwise Distances', 'Variance of Distances', rm_non_full_100 = T, rm_full_100 = T)
+stats_df = plot_diversity('variance_evolutionary_distinctiveness', 'Variance of Evolutionary Distinctiveness', rm_non_full_100 = T, rm_full_100 = T)
+# 
+# #found$mrca_norm = found$mrca_depth / found$first_gen_found
+# #stats_df = plot_diversity('mrca_norm', 'MRCA Depth (Normalized)', 'Percentage of Evolutionary Run')
+# 
+# stats_df = plot_diversity('first_gen_found', 'First Generation a Solution Appeared', 'Generation', T)
