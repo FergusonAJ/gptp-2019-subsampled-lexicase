@@ -23,7 +23,7 @@ df$subsample_rate = factor(df$subsample_rate, levels = c('50%', '25%', '10%', '5
 ggplot(df, aes(x = gens, y = frac, col = subsample_rate, linetype = subsample_rate)) +  
   geom_line(size = 1.5) + 
   xlab('Generations') +
-  ylab('Fraction of training cases encountered by a lineage')+
+  ylab('Fraction of Training Cases Encountered by a Lineage')+
   theme(panel.grid.minor.x = element_blank()) +
   #scale_linetype_identity() +
   theme(plot.title = element_text(hjust = 0.5)) +

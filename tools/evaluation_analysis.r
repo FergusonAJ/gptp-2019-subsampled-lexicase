@@ -133,7 +133,7 @@ ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_leve
   coord_flip() +
   facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-  ylab('Percentage of Runs that Found Perfect Solutions') +
+  ylab('Fraction of Runs that Found Perfect Solutions') +
   xlab('Subsampling Level') +
   theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size = 18)) +
@@ -189,7 +189,7 @@ ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_leve
   coord_flip() +
   facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-  ylab('Percentage of Runs that Found Perfect Solutions') +
+  ylab('Fraction of Runs that Found Perfect Solutions') +
   xlab('Subsampling Level') +
   theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size = 18)) +
@@ -292,7 +292,7 @@ ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_leve
   coord_flip() +
   facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-  ylab('Percentage of Runs that Found Perfect Solutions') +
+  ylab('Fraction of Runs that Found Perfect Solutions') +
   xlab('Subsampling Level') +
   theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size = 18)) +
@@ -323,7 +323,7 @@ ggplot(data = res_df_trimmed, mapping=aes(x=factor(size_name, levels = size_leve
   coord_flip() +
   facet_grid(. ~ factor(prob_name, levels = prob_levels)) +
   ggtitle('Perfect Solutions Found - Constant Evaluations') +
-  ylab('Percentage of Runs that Found Perfect Solutions') +
+  ylab('Fraction of Runs that Found Perfect Solutions') +
   xlab('Subsampling Level') +
   theme(strip.text  = element_text(size = 18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size = 18)) +
