@@ -419,10 +419,10 @@ run_test = function(groups, N = 10, n = N, T_ = N, t = T_ / groups){
 # Generate predicted data
 pred_data = data.frame(data = matrix(nrow = 0, ncol = 6))
 for(pop_size in seq(10, 1000, by=10)){
-  for(num_tests in c(20, 100)){
+  for(num_tests in c(20, 100, 250)){
     #Calculate lexicase prob once
     lexicase = run_test(groups = 1,  N = pop_size, n = pop_size,      T_ = num_tests, t = num_tests)
-    for(sample_rate in c(0.1, 0.5)){
+    for(sample_rate in c(0.1, 0.25, 0.5)){
       # Calculate and append to data the probs for cohort and downsampled
       cohort =      run_test(groups = 1/sample_rate, N = pop_size, n = pop_size * sample_rate, T_ = num_tests, t = num_tests * sample_rate)
       downsampled = run_test(groups = 1/sample_rate, N = pop_size, n = pop_size,               T_ = num_tests, t = num_tests * sample_rate)
@@ -450,12 +450,12 @@ pred_data[str_count(pred_data$treatment, 'cohort') >= 1,]$trt_name = 'Cohort'
 pred_data[str_count(pred_data$treatment, 'downsampled') >= 1,]$trt_name = 'Down-sampled'
 pred_data$subsample_name = paste0(as.character(round(pred_data$subsample_rate * 100, 0)), '% Subsampling')
 pred_data$num_tests_name = paste0(pred_data$num_tests, ' Tests')
-pred_data$num_tests_name = factor(pred_data$num_tests_name, levels = c('20 Tests', '100 Tests'))
+pred_data$num_tests_name = factor(pred_data$num_tests_name, levels = c('20 Tests', '100 Tests', '250 Tests'))
 
 #Plot the predicted data!
 ggplot(pred_data, aes(x = pop_size, y = perfect, color = trt_name)) + 
   geom_line(size=2) +
-  facet_grid(rows = vars(num_tests_name), cols = vars(subsample_name)) + 
+  facet_grid(cols = vars(num_tests_name), rows = vars(subsample_name)) + 
   scale_color_manual(values = color_vec) +
   scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
   xlab('Population Size') +
@@ -467,7 +467,7 @@ ggplot(pred_data, aes(x = pop_size, y = perfect, color = trt_name)) +
   theme(strip.text  = element_text(size=18, face = 'bold')) + # For the facet labels
   theme(axis.title  = element_text(size=18)) +
   theme(axis.text   = element_text(size=18)) +
-  ggsave(filename = './plots/specialist_predicted.pdf', units = 'in', width = IMG_WIDTH, height = IMG_HEIGHT)
+  ggsave(filename = './plots/specialist_predicted.pdf', units = 'in', width = IMG_WIDTH, height = 10)
 
   
 stats_copy = stats_df
